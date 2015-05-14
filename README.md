@@ -5,7 +5,7 @@ from [RabbitMQ](https://www.rabbitmq.com/).
 
 ## Requirements
 
-This library requires Spark 1.3+, Scala 10+, RabbitMQ 3.5+
+This library requires Spark 1.3+, Scala 2.10+, RabbitMQ 3.5+
 
 ## Using the library
 
