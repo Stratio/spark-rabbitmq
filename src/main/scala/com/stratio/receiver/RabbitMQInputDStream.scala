@@ -19,6 +19,9 @@ package com.stratio.receiver
 import java.net.ConnectException
 import java.util
 
+import scala.util.{Failure, Try}
+
+import akka.actor.Status.Success
 import com.rabbitmq.client.{Channel, Connection, ConnectionFactory, QueueingConsumer}
 import org.apache.spark.Logging
 import org.apache.spark.storage.StorageLevel
@@ -71,38 +74,33 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
     // is designed to stop by itself isStopped() returns false
   }
 
-  private def getQueueName(channel: Channel): String ={
-    if (!routingKeys.isEmpty){
-      channel.queueDeclare().getQueue()
-    }else{
-      rabbitMQQueueName.get
-    }
-  }
-
   /** Create a socket connection and receive data until receiver is stopped */
   private def receive() {
 
-    try {
-      val factory: ConnectionFactory = new ConnectionFactory
-      factory.setHost(rabbitMQHost)
-      factory.setPort(rabbitMQPort)
-      val connection: Connection = factory.newConnection
-      val channel: Channel = connection.createChannel
+      val (connection: Connection, channel: Channel) = for {
+        factory: ConnectionFactory <- getConnectionFactory
+        connection: Connection <- getNewConnection(factory)
+        channel <- connection.createChannel
+      } yield {
+        (connection, channel)
+      }
 
-      val queueName = ""
+      var queueName = ""
       if (!routingKeys.isEmpty){
         channel.exchangeDeclare(exchangeName.get, DirectExchangeType)
+        queueName = channel.queueDeclare().getQueue()
 
         for (routingKey: String <- routingKeys) {
           channel.queueBind(queueName, exchangeName.get, routingKey)
         }
       }else{
         channel.queueDeclare(rabbitMQQueueName.get, false, false, false, new util.HashMap(0))
+        queueName = rabbitMQQueueName.get
       }
 
       log.error("RabbitMQ Input waiting for messages")
       val consumer: QueueingConsumer = new QueueingConsumer(channel)
-      channel.basicConsume(getQueueName(channel), true, consumer)
+      channel.basicConsume(queueName, true, consumer)
       while (!isStopped) {
         val delivery: QueueingConsumer.Delivery = consumer.nextDelivery
         store(new String(delivery.getBody))
@@ -112,16 +110,20 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
       channel.close
       connection.close
       restart("Trying to connect again")
-    }
-    catch {
-      case ce: ConnectException => {
-        log.error("Could not connect")
-        restart("Could not connect", ce)
-      }
-      case t: Throwable => {
-        log.error("Error receiving data")
-        restart("Error receiving data", t)
-      }
+  }
+
+  private val getConnectionFactory: ConnectionFactory = {
+    val factory: ConnectionFactory = new ConnectionFactory
+    factory.setHost(rabbitMQHost)
+    factory.setPort(rabbitMQPort)
+    factory
+  }
+
+  private def getNewConnection(factory: ConnectionFactory): Connection = {
+    Try(factory.newConnection()) match {
+      case Success(connection: Connection) => connection
+      case Failure(f) =>   log.error("Could not connect"); restart("Could not connect", f); throw f
     }
   }
+
 }
