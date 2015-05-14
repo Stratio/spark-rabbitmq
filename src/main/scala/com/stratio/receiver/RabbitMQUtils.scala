@@ -106,10 +106,11 @@ object RabbitMQUtils {
                                   rabbitMQHost: String,
                                   rabbitMQPort: Int,
                                   exchangeName: String,
-                                  routingKeys: Seq[String],
+                                  routingKeys: java.util.List[String],
                                   storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
                                    ): JavaReceiverInputDStream[String] = {
     implicitly[ClassTag[AnyRef]].asInstanceOf[ClassTag[String]]
-    createStreamFromRoutingKeys(jssc.ssc, rabbitMQHost, rabbitMQPort, exchangeName, routingKeys, storageLevel)
+    createStreamFromRoutingKeys(jssc.ssc, rabbitMQHost, rabbitMQPort, exchangeName, scala.collection.JavaConversions
+      .asScalaBuffer(routingKeys), storageLevel)
   }
 }
