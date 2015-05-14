@@ -71,6 +71,14 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
     // is designed to stop by itself isStopped() returns false
   }
 
+  private def getQueueName(channel: Channel): String ={
+    if (!routingKeys.isEmpty){
+      channel.queueDeclare().getQueue()
+    }else{
+      rabbitMQQueueName.get
+    }
+  }
+
   /** Create a socket connection and receive data until receiver is stopped */
   private def receive() {
 
@@ -81,22 +89,20 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
       val connection: Connection = factory.newConnection
       val channel: Channel = connection.createChannel
 
-      var queueName = ""
+      val queueName = ""
       if (!routingKeys.isEmpty){
         channel.exchangeDeclare(exchangeName.get, DirectExchangeType)
-        queueName = channel.queueDeclare().getQueue()
 
         for (routingKey: String <- routingKeys) {
           channel.queueBind(queueName, exchangeName.get, routingKey)
         }
       }else{
         channel.queueDeclare(rabbitMQQueueName.get, false, false, false, new util.HashMap(0))
-        queueName = rabbitMQQueueName.get
       }
 
       log.error("RabbitMQ Input waiting for messages")
       val consumer: QueueingConsumer = new QueueingConsumer(channel)
-      channel.basicConsume(queueName, true, consumer)
+      channel.basicConsume(getQueueName(channel), true, consumer)
       while (!isStopped) {
         val delivery: QueueingConsumer.Delivery = consumer.nextDelivery
         store(new String(delivery.getBody))
