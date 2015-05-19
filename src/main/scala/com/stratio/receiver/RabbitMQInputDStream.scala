@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.stratio.sparkta.plugin.input.rabbitmq
+package com.stratio.receiver
 
 import java.util
 
