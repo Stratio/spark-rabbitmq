@@ -24,7 +24,19 @@
     <artifactId>rabbitmq</artifactId>
     <version>0.1.0-RELEASE</version>
 
+    <url>https://github.com/Stratio/RabbitMQ-Receiver</url>
     <name>Spark Streaming RabbitMQ Receiver</name>
+
+    <description>
+        RabbitMQ-Receiver is a library that allows the user to read data with Apache Spark from RabbitMQ.
+    </description>
+
+    <scm>
+        <url>https://github.com/Stratio/RabbitMQ-Receiver.git</url>
+        <connection>scm:git:git://github.com/Stratio/RabbitMQ-Receiver.git</connection>
+        <developerConnection>scm:git:git@github.com:Stratio/RabbitMQ-Receiver.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
 
     <developers>
         <developer>
