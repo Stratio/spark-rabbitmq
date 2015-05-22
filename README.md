@@ -9,7 +9,19 @@ This library requires Spark 1.3+, Scala 2.10+, RabbitMQ 3.5+
 
 ## Using the library
 
-For using RabbitMQ-Receiver library you have to clone the repo an install the jar in your maven local repo by doing:
+There are two ways of using RabbitMQ-Receiver library:
+
+The first one is to add the next dependency in your pom.xml:
+
+```
+<dependency>
+  <groupId>com.stratio.receiver</groupId>
+  <artifactId>rabbitmq</artifactId>
+  <version>LATEST</version>
+</dependency>
+```
+
+The other one is to clone the full repository and build the project:
 
 ```
 git clone https://github.com/Stratio/RabbitMQ-Receiver.git
