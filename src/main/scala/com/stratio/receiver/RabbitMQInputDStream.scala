@@ -32,35 +32,42 @@ class RabbitMQInputDStream(
                             @transient ssc_ : StreamingContext,
                             rabbitMQQueueName: Option[String],
                             rabbitMQHost: String,
-                            rabbitMQPort: Int,
                             exchangeName: Option[String],
                             routingKeys: Seq[String],
-                            storageLevel: StorageLevel
+                            storageLevel: StorageLevel,
+                            vhost: String,
+                            username: String,
+                            password: String
                             ) extends ReceiverInputDStream[String](ssc_) with Logging {
 
   override def getReceiver(): Receiver[String] = {
-    val DefaultRabbitMQPort = 5672
 
     new RabbitMQReceiver(rabbitMQQueueName,
-      Some(rabbitMQHost).getOrElse("localhost"),
-      Some(rabbitMQPort).getOrElse(DefaultRabbitMQPort),
+      rabbitMQHost,
       exchangeName,
       routingKeys,
-      storageLevel)
+      storageLevel,
+      vhost,
+      username,
+      password)
   }
 }
 
 private[receiver]
 class RabbitMQReceiver(rabbitMQQueueName: Option[String],
                        rabbitMQHost: String,
-                       rabbitMQPort: Int,
                        exchangeName: Option[String],
                        routingKeys: Seq[String],
-                       storageLevel: StorageLevel)
+                       storageLevel: StorageLevel,
+                       vhost: String,
+                       username: String,
+                       password: String)
   extends Receiver[String](storageLevel) with Logging {
 
   val DirectExchangeType: String = "direct"
+  val DefaultRabbitMQPort = 5672
 
+      
   def onStart() {
     implicit val akkaSystem = akka.actor.ActorSystem()
     getConnectionAndChannel match {
@@ -98,7 +105,8 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
     channel.basicConsume(queueName, true, consumer)
 
     while (!isStopped) {
-      val delivery: QueueingConsumer.Delivery = consumer.nextDelivery
+      // Oded: Added timeout for delivery to 5 seconds, will throw exception and exit if timeouted
+      val delivery: QueueingConsumer.Delivery = consumer.nextDelivery(5000)
       store(new String(delivery.getBody))
     }
 
@@ -109,8 +117,13 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
   }
 
   private def getConnectionAndChannel: Try[(Connection, Channel)] = {
+    log.info("rabbit host addresses are :" + rabbitMQHost)
+    for ( addr <- Address.parseAddresses(rabbitMQHost) ) {
+      log.info("address " + addr.toString())
+    }
+
     for {
-      connection: Connection <- Try(getConnectionFactory.newConnection())
+      connection: Connection <- Try(getConnectionFactory.newConnection(Address.parseAddresses(rabbitMQHost)))
       channel: Channel <- Try(connection.createChannel)
     } yield {
       (connection, channel)
@@ -119,8 +132,10 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
 
   private def getConnectionFactory: ConnectionFactory = {
     val factory: ConnectionFactory = new ConnectionFactory
-    factory.setHost(rabbitMQHost)
-    factory.setPort(rabbitMQPort)
+    log.info("vhost username password #" + vhost + "# #"+username+"# #"+password+"#")
+    factory.setVirtualHost(vhost)
+    factory.setUsername(username)
+    factory.setPassword(password)
     factory
   }
 }
