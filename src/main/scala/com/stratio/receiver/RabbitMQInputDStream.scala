@@ -65,6 +65,7 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
   extends Receiver[String](storageLevel) with Logging {
 
   val DirectExchangeType: String = "direct"
+  val TopicExchangeType: String = "topic"
   val DefaultRabbitMQPort = 5672
 
       
@@ -86,7 +87,7 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
 
     val queueName = !routingKeys.isEmpty match {
       case true => {
-        channel.exchangeDeclare(exchangeName.get, DirectExchangeType)
+        channel.exchangeDeclare(exchangeName.get, TopicExchangeType)
         val queueName = channel.queueDeclare().getQueue()
 
         for (routingKey: String <- routingKeys) {
