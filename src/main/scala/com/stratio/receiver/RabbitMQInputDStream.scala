@@ -28,8 +28,6 @@ import org.apache.spark.streaming.dstream.ReceiverInputDStream
 import org.apache.spark.streaming.receiver.Receiver
 import java.nio.ByteBuffer
 import scala.reflect.{classTag, ClassTag}
-import htsjdk.samtools._
-import org.apache.commons.lang3.SerializationUtils
 
 private[receiver]
 class RabbitMQInputDStream[R : ClassTag](
