@@ -38,7 +38,7 @@ object RabbitMQUtils {
                    rabbitMQPort: Int,
                    rabbitMQQueueName: String,
                    storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
-                    ): ReceiverInputDStream[String] = {
+                    ): ReceiverInputDStream[ClassTag[AnyRef]] = {
     new RabbitMQInputDStream(
       ssc,
       Some(rabbitMQQueueName),
@@ -62,8 +62,7 @@ object RabbitMQUtils {
                    rabbitMQPort: Int,
                    rabbitMQQueueName: String,
                    storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
-                    ): JavaReceiverInputDStream[String] = {
-    implicitly[ClassTag[AnyRef]].asInstanceOf[ClassTag[String]]
+                    ): JavaReceiverInputDStream[ClassTag[AnyRef]] = {
     createStreamFromAQueue(jssc.ssc, rabbitMQHost, rabbitMQPort, rabbitMQQueueName)
   }
 
@@ -82,7 +81,7 @@ object RabbitMQUtils {
                    exchangeName: String,
                    routingKeys: Seq[String],
                    storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
-                    ): ReceiverInputDStream[String] = {
+                    ): ReceiverInputDStream[ClassTag[AnyRef]] = {
     new RabbitMQInputDStream(
       ssc,
       None,
@@ -108,8 +107,7 @@ object RabbitMQUtils {
                                   exchangeName: String,
                                   routingKeys: java.util.List[String],
                                   storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
-                                   ): JavaReceiverInputDStream[String] = {
-    implicitly[ClassTag[AnyRef]].asInstanceOf[ClassTag[String]]
+                                   ): JavaReceiverInputDStream[ClassTag[AnyRef]] = {
     createStreamFromRoutingKeys(jssc.ssc, rabbitMQHost, rabbitMQPort, exchangeName, scala.collection.JavaConversions
       .asScalaBuffer(routingKeys), storageLevel)
   }

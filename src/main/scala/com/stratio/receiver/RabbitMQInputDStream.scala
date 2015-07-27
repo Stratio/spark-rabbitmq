@@ -26,9 +26,11 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
 import org.apache.spark.streaming.receiver.Receiver
+import java.nio.ByteBuffer
+import scala.reflect.{classTag, ClassTag}
 
 private[receiver]
-class RabbitMQInputDStream(
+class RabbitMQInputDStream[R : ClassTag](
                             @transient ssc_ : StreamingContext,
                             rabbitMQQueueName: Option[String],
                             rabbitMQHost: String,
@@ -36,9 +38,9 @@ class RabbitMQInputDStream(
                             exchangeName: Option[String],
                             routingKeys: Seq[String],
                             storageLevel: StorageLevel
-                            ) extends ReceiverInputDStream[String](ssc_) with Logging {
+                            ) extends ReceiverInputDStream[R](ssc_) with Logging {
 
-  override def getReceiver(): Receiver[String] = {
+  override def getReceiver(): Receiver[R] = {
     val DefaultRabbitMQPort = 5672
 
     new RabbitMQReceiver(rabbitMQQueueName,
@@ -51,13 +53,13 @@ class RabbitMQInputDStream(
 }
 
 private[receiver]
-class RabbitMQReceiver(rabbitMQQueueName: Option[String],
+class RabbitMQReceiver[R: ClassTag](rabbitMQQueueName: Option[String],
                        rabbitMQHost: String,
                        rabbitMQPort: Int,
                        exchangeName: Option[String],
                        routingKeys: Seq[String],
                        storageLevel: StorageLevel)
-  extends Receiver[String](storageLevel) with Logging {
+  extends Receiver[R](storageLevel) with Logging {
 
   val DirectExchangeType: String = "direct"
 
@@ -99,7 +101,7 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
 
     while (!isStopped) {
       val delivery: QueueingConsumer.Delivery = consumer.nextDelivery
-      store(new String(delivery.getBody))
+      store(ByteBuffer.wrap(delivery.getBody,0, delivery.getBody.length))
     }
 
     log.info("it has been stopped")
