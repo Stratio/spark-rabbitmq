@@ -33,20 +33,24 @@ mvn clean install
 There are two ways of creating a receiver. Consuming data directly from a RabbitMQ queue or consuming data from a 
 RabbitMQ queue through a direct exchange:
 
-```
+```scala
 val receiverStream = RabbitMQUtils.createStreamFromAQueue(sparkStreamingContext, 
                                                           rabbitMQHost, 
                                                           rabbitMQPort, 
-                                                          rabbitMQQueueName, 
+                                                          rabbitMQQueueName,
+                                                          rabbitMQVHost,
+                                                          persistentQueue,
                                                           storageLevel)
 ```
 
-```
+```scala
 val receiverStream 
   = RabbitMQUtils.createStreamFromRoutingKeys(sparkStreamingContext, 
                                               rabbitMQHost, 
                                               rabbitMQPort, 
                                               exchangeName, 
+                                              rabbitMQVHost,
+                                              persistentQueue
                                               Seq("routingKey1", "routingKey2", ...), 
                                               storageLevel)
 ```
@@ -56,12 +60,14 @@ val receiverStream
 As in the Scala API there are two ways of creating a receiver. Consuming data directly from a RabbitMQ queue or 
 consuming data from a RabbitMQ queue through a direct exchange:
 
-```
+```java
 JavaReceiverInputDStream receiverStream 
   = RabbitMQUtils.createJavaStreamFromAQueue(javaSparkStreamingContext,
                                              rabbitMQHost, 
                                              rabbitMQPort,
-                                             rabbitMQQueueName, 
+                                             rabbitMQQueueName,
+                                             rabbitMQVHost,
+                                             persistentQueue
                                              storageLevel);
 ```
 
@@ -71,7 +77,9 @@ JavaReceiverInputDStream receiverStream
                                               rabbitMQHost, 
                                               rabbitMQPort, 
                                               exchangeName, 
-                                              routingKeyList, 
+                                              routingKeyList,
+                                              rabbitMQVHost,
+                                              persistentQueue
                                               storageLevel)
 ```
 
