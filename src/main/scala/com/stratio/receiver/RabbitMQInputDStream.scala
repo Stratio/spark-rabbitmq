@@ -33,6 +33,7 @@ class RabbitMQInputDStream(
                             rabbitMQQueueName: Option[String],
                             rabbitMQHost: String,
                             rabbitMQPort: Int,
+                            rabbitMQVHost: String,
                             exchangeName: Option[String],
                             routingKeys: Seq[String],
                             storageLevel: StorageLevel
@@ -40,10 +41,12 @@ class RabbitMQInputDStream(
 
   override def getReceiver(): Receiver[String] = {
     val DefaultRabbitMQPort = 5672
+    val DefaultRabbitMQVHost = "/"
 
     new RabbitMQReceiver(rabbitMQQueueName,
       Some(rabbitMQHost).getOrElse("localhost"),
       Some(rabbitMQPort).getOrElse(DefaultRabbitMQPort),
+      Some(rabbitMQVHost).getOrElse(DefaultRabbitMQVHost),
       exchangeName,
       routingKeys,
       storageLevel)
@@ -54,12 +57,14 @@ private[receiver]
 class RabbitMQReceiver(rabbitMQQueueName: Option[String],
                        rabbitMQHost: String,
                        rabbitMQPort: Int,
+                       rabbitMQVHost: String,
                        exchangeName: Option[String],
                        routingKeys: Seq[String],
                        storageLevel: StorageLevel)
   extends Receiver[String](storageLevel) with Logging {
 
   val DirectExchangeType: String = "direct"
+  val DefaultRabbitMQVHost = "/"
 
   def onStart() {
     implicit val akkaSystem = akka.actor.ActorSystem()
@@ -77,10 +82,10 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
   /** Create a socket connection and receive data until receiver is stopped */
   private def receive(connection: Connection, channel: Channel) {
 
-    val queueName = !routingKeys.isEmpty match {
+    val queueName = routingKeys.nonEmpty match {
       case true => {
         channel.exchangeDeclare(exchangeName.get, DirectExchangeType)
-        val queueName = channel.queueDeclare().getQueue()
+        val queueName = channel.queueDeclare().getQueue
 
         for (routingKey: String <- routingKeys) {
           channel.queueBind(queueName, exchangeName.get, routingKey)
@@ -88,7 +93,7 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
         queueName
       }
       case false => {
-        channel.queueDeclare(rabbitMQQueueName.get, false, false, false, new util.HashMap(0))
+        channel.queueDeclare(rabbitMQQueueName.get, true, false, false, new util.HashMap(0))
         rabbitMQQueueName.get
       }
     }
@@ -121,6 +126,7 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
     val factory: ConnectionFactory = new ConnectionFactory
     factory.setHost(rabbitMQHost)
     factory.setPort(rabbitMQPort)
+    factory.setVirtualHost(rabbitMQVHost)
     factory
   }
 }
