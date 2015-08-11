@@ -36,6 +36,7 @@ class RabbitMQInputDStream(
                             rabbitMQVHost: String,
                             exchangeName: Option[String],
                             routingKeys: Seq[String],
+                            persistentQueue : Boolean,
                             storageLevel: StorageLevel
                             ) extends ReceiverInputDStream[String](ssc_) with Logging {
 
@@ -49,6 +50,7 @@ class RabbitMQInputDStream(
       Some(rabbitMQVHost).getOrElse(DefaultRabbitMQVHost),
       exchangeName,
       routingKeys,
+      persistentQueue,
       storageLevel)
   }
 }
@@ -60,6 +62,7 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
                        rabbitMQVHost: String,
                        exchangeName: Option[String],
                        routingKeys: Seq[String],
+                       persistantQueue: Boolean,
                        storageLevel: StorageLevel)
   extends Receiver[String](storageLevel) with Logging {
 
@@ -93,7 +96,7 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
         queueName
       }
       case false => {
-        channel.queueDeclare(rabbitMQQueueName.get, true, false, false, new util.HashMap(0))
+        channel.queueDeclare(rabbitMQQueueName.get, persistantQueue, false, false, new util.HashMap(0))
         rabbitMQQueueName.get
       }
     }
