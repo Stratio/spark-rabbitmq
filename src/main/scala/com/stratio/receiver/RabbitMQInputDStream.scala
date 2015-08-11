@@ -62,7 +62,7 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
                        rabbitMQVHost: String,
                        exchangeName: Option[String],
                        routingKeys: Seq[String],
-                       persistantQueue: Boolean,
+                       persistentQueue: Boolean,
                        storageLevel: StorageLevel)
   extends Receiver[String](storageLevel) with Logging {
 
@@ -96,7 +96,7 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
         queueName
       }
       case false => {
-        channel.queueDeclare(rabbitMQQueueName.get, persistantQueue, false, false, new util.HashMap(0))
+        channel.queueDeclare(rabbitMQQueueName.get, persistentQueue, false, false, new util.HashMap(0))
         rabbitMQQueueName.get
       }
     }
