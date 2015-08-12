@@ -67,7 +67,6 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
   extends Receiver[String](storageLevel) with Logging {
 
   val DirectExchangeType: String = "direct"
-  val DefaultRabbitMQVHost = "/"
 
   def onStart() {
     implicit val akkaSystem = akka.actor.ActorSystem()
