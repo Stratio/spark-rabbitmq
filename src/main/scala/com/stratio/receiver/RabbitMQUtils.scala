@@ -74,7 +74,7 @@ object RabbitMQUtils {
                    storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
                     ): JavaReceiverInputDStream[String] = {
     implicitly[ClassTag[AnyRef]].asInstanceOf[ClassTag[String]]
-    createStreamFromAQueue(jssc.ssc, rabbitMQHost, rabbitMQPort, rabbitMQQueueName, rabbitMQVHost)
+    createStreamFromAQueue(jssc.ssc, rabbitMQHost, rabbitMQPort, rabbitMQQueueName, rabbitMQVHost, persistentQueue, storageLevel)
   }
 
   /**
