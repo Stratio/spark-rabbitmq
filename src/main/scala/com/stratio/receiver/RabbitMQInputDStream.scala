@@ -31,31 +31,42 @@ private[receiver]
 class RabbitMQInputDStream(
                             @transient ssc_ : StreamingContext,
                             rabbitMQQueueName: Option[String],
-                            rabbitMQHost: String,
-                            rabbitMQPort: Int,
+                            rabbitMQHost: Option[String],
+                            rabbitMQPort: Option[Int],
+                            rabbitMQVHost: Option[String],
                             exchangeName: Option[String],
                             routingKeys: Seq[String],
+                            persistentQueue : Boolean,
                             storageLevel: StorageLevel
                             ) extends ReceiverInputDStream[String](ssc_) with Logging {
 
   override def getReceiver(): Receiver[String] = {
-    val DefaultRabbitMQPort = 5672
+    def DefaultRabbitMQHost = "localhost"
+    def DefaultRabbitMQPort = 5672
+    def DefaultRabbitMQVHost = "/"
+    def DefaultRabbitMQExchange = ""
 
-    new RabbitMQReceiver(rabbitMQQueueName,
-      Some(rabbitMQHost).getOrElse("localhost"),
-      Some(rabbitMQPort).getOrElse(DefaultRabbitMQPort),
-      exchangeName,
+    new RabbitMQReceiver(
+      rabbitMQQueueName.get,
+      rabbitMQHost.getOrElse(DefaultRabbitMQHost),
+      rabbitMQPort.getOrElse(DefaultRabbitMQPort),
+      rabbitMQVHost.getOrElse(DefaultRabbitMQVHost),
+      exchangeName.getOrElse(DefaultRabbitMQExchange),
       routingKeys,
-      storageLevel)
+      persistentQueue,
+      storageLevel
+    )
   }
 }
 
 private[receiver]
-class RabbitMQReceiver(rabbitMQQueueName: Option[String],
+class RabbitMQReceiver(rabbitMQQueueName: String,
                        rabbitMQHost: String,
                        rabbitMQPort: Int,
-                       exchangeName: Option[String],
+                       rabbitMQVHost: String,
+                       exchangeName: String,
                        routingKeys: Seq[String],
+                       persistentQueue: Boolean,
                        storageLevel: StorageLevel)
   extends Receiver[String](storageLevel) with Logging {
 
@@ -77,21 +88,17 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
   /** Create a socket connection and receive data until receiver is stopped */
   private def receive(connection: Connection, channel: Channel) {
 
-    val queueName = !routingKeys.isEmpty match {
-      case true => {
-        channel.exchangeDeclare(exchangeName.get, DirectExchangeType)
-        val queueName = channel.queueDeclare().getQueue()
+     val queueName = routingKeys.nonEmpty match {
+       case true =>
+         channel.exchangeDeclare(exchangeName, DirectExchangeType)
+         val queueName = channel.queueDeclare().getQueue
 
-        for (routingKey: String <- routingKeys) {
-          channel.queueBind(queueName, exchangeName.get, routingKey)
-        }
-        queueName
-      }
-      case false => {
-        channel.queueDeclare(rabbitMQQueueName.get, false, false, false, new util.HashMap(0))
-        rabbitMQQueueName.get
-      }
-    }
+         routingKeys.foreach(key => channel.queueBind(queueName, exchangeName, key))
+         queueName
+       case false =>
+         channel.queueDeclare(rabbitMQQueueName, persistentQueue, false, false, new util.HashMap(0))
+         rabbitMQQueueName
+     }
 
     log.info("RabbitMQ Input waiting for messages")
     val consumer: QueueingConsumer = new QueueingConsumer(channel)
@@ -121,6 +128,7 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
     val factory: ConnectionFactory = new ConnectionFactory
     factory.setHost(rabbitMQHost)
     factory.setPort(rabbitMQPort)
+    factory.setVirtualHost(rabbitMQVHost)
     factory
   }
 }

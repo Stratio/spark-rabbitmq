@@ -31,22 +31,29 @@ object RabbitMQUtils {
    * @param rabbitMQHost       Url of remote RabbitMQ server
    * @param rabbitMQPort       Port of remote RabbitMQ server
    * @param rabbitMQQueueName  Queue to subscribe to
+   * @param rabbitMQVHost      VHost the queue belongs to ("/" by default)
+   * @param persistentQueue Indicate if the queue should be declared persistent or not (false by default)
    * @param storageLevel       RDD storage level. Defaults to StorageLevel.MEMORY_AND_DISK_SER_2.
    */
   def createStreamFromAQueue(ssc: StreamingContext,
                    rabbitMQHost: String,
                    rabbitMQPort: Int,
                    rabbitMQQueueName: String,
+                   rabbitMQVHost: String = "/",
+                   persistentQueue: Boolean = false,
                    storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
                     ): ReceiverInputDStream[String] = {
     new RabbitMQInputDStream(
-      ssc,
-      Some(rabbitMQQueueName),
-      rabbitMQHost,
-      rabbitMQPort,
-      None,
-      Seq(),
-      storageLevel)
+        ssc,
+        Some(rabbitMQQueueName),
+        Some(rabbitMQHost),
+        Some(rabbitMQPort),
+        Some(rabbitMQVHost),
+        None,
+        Seq(),
+        persistentQueue,
+        storageLevel
+      )
   }
 
   /**
@@ -55,16 +62,20 @@ object RabbitMQUtils {
    * @param rabbitMQHost       Url of remote RabbitMQ server
    * @param rabbitMQPort       Port of remote RabbitMQ server
    * @param rabbitMQQueueName  Queue to subscribe to
+   * @param rabbitMQVHost      VHost the queue belongs to ("/" by default)
+   * @param persistentQueue Indicate if the queue should be declared persistent or not (false by default)
    * @param storageLevel       RDD storage level. Defaults to StorageLevel.MEMORY_AND_DISK_SER_2.
    */
   def createJavaStreamFromAQueue(jssc: JavaStreamingContext,
                    rabbitMQHost: String,
                    rabbitMQPort: Int,
                    rabbitMQQueueName: String,
+                   rabbitMQVHost: String = "/",
+                   persistentQueue: Boolean = false,
                    storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
                     ): JavaReceiverInputDStream[String] = {
     implicitly[ClassTag[AnyRef]].asInstanceOf[ClassTag[String]]
-    createStreamFromAQueue(jssc.ssc, rabbitMQHost, rabbitMQPort, rabbitMQQueueName)
+    createStreamFromAQueue(jssc.ssc, rabbitMQHost, rabbitMQPort, rabbitMQQueueName, rabbitMQVHost, persistentQueue, storageLevel)
   }
 
   /**
@@ -74,6 +85,8 @@ object RabbitMQUtils {
    * @param rabbitMQPort     Port of remote RabbitMQ server
    * @param exchangeName     Exchange name to subscribe to
    * @param routingKeys      Routing keys to subscribe to
+   * @param rabbitMQVHost      VHost the queue belongs to ("/" by default)
+   * @param persistentQueue Indicate if the queue should be declared persistent or not (false by default)
    * @param storageLevel     RDD storage level. Defaults to StorageLevel.MEMORY_AND_DISK_SER_2.
    */
   def createStreamFromRoutingKeys(ssc: StreamingContext,
@@ -81,15 +94,19 @@ object RabbitMQUtils {
                    rabbitMQPort: Int,
                    exchangeName: String,
                    routingKeys: Seq[String],
+                   rabbitMQVHost: String = "/",
+                   persistentQueue: Boolean = false,
                    storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
                     ): ReceiverInputDStream[String] = {
     new RabbitMQInputDStream(
       ssc,
       None,
-      rabbitMQHost,
-      rabbitMQPort,
+      Some(rabbitMQHost),
+      Some(rabbitMQPort),
+      Some(rabbitMQVHost),
       Some(exchangeName),
       routingKeys,
+      persistentQueue,
       storageLevel)
   }
 
@@ -100,6 +117,8 @@ object RabbitMQUtils {
    * @param rabbitMQPort     Port of remote RabbitMQ server
    * @param exchangeName     Exchange name to subscribe to
    * @param routingKeys      Routing keys to subscribe to
+   * @param rabbitMQVHost      VHost the queue belongs to ("/" by default)
+   * @param persistentQueue Indicate if the queue should be declared persistent or not (false by default)
    * @param storageLevel     RDD storage level. Defaults to StorageLevel.MEMORY_AND_DISK_SER_2.
    */
   def createJavaStreamFromRoutingKeys(jssc: JavaStreamingContext,
@@ -107,10 +126,12 @@ object RabbitMQUtils {
                                   rabbitMQPort: Int,
                                   exchangeName: String,
                                   routingKeys: java.util.List[String],
+                                  rabbitMQVHost: String = "/",
+                                  persistentQueue: Boolean = false,
                                   storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
                                    ): JavaReceiverInputDStream[String] = {
     implicitly[ClassTag[AnyRef]].asInstanceOf[ClassTag[String]]
     createStreamFromRoutingKeys(jssc.ssc, rabbitMQHost, rabbitMQPort, exchangeName, scala.collection.JavaConversions
-      .asScalaBuffer(routingKeys), storageLevel)
+      .asScalaBuffer(routingKeys), rabbitMQVHost, persistentQueue, storageLevel)
   }
 }
