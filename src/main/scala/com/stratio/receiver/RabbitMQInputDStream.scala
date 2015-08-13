@@ -31,9 +31,9 @@ private[receiver]
 class RabbitMQInputDStream(
                             @transient ssc_ : StreamingContext,
                             rabbitMQQueueName: Option[String],
-                            rabbitMQHost: String,
-                            rabbitMQPort: Int,
-                            rabbitMQVHost: String,
+                            rabbitMQHost: Option[String],
+                            rabbitMQPort: Option[Int],
+                            rabbitMQVHost: Option[String],
                             exchangeName: Option[String],
                             routingKeys: Seq[String],
                             persistentQueue : Boolean,
@@ -41,26 +41,30 @@ class RabbitMQInputDStream(
                             ) extends ReceiverInputDStream[String](ssc_) with Logging {
 
   override def getReceiver(): Receiver[String] = {
-    val DefaultRabbitMQPort = 5672
-    val DefaultRabbitMQVHost = "/"
+    def DefaultRabbitMQHost = "localhost"
+    def DefaultRabbitMQPort = 5672
+    def DefaultRabbitMQVHost = "/"
+    def DefaultRabbitMQExchange = ""
 
-    new RabbitMQReceiver(rabbitMQQueueName,
-      Some(rabbitMQHost).getOrElse("localhost"),
-      Some(rabbitMQPort).getOrElse(DefaultRabbitMQPort),
-      Some(rabbitMQVHost).getOrElse(DefaultRabbitMQVHost),
-      exchangeName,
+    new RabbitMQReceiver(
+      rabbitMQQueueName.get,
+      rabbitMQHost.getOrElse(DefaultRabbitMQHost),
+      rabbitMQPort.getOrElse(DefaultRabbitMQPort),
+      rabbitMQVHost.getOrElse(DefaultRabbitMQVHost),
+      exchangeName.getOrElse(DefaultRabbitMQExchange),
       routingKeys,
       persistentQueue,
-      storageLevel)
+      storageLevel
+    )
   }
 }
 
 private[receiver]
-class RabbitMQReceiver(rabbitMQQueueName: Option[String],
+class RabbitMQReceiver(rabbitMQQueueName: String,
                        rabbitMQHost: String,
                        rabbitMQPort: Int,
                        rabbitMQVHost: String,
-                       exchangeName: Option[String],
+                       exchangeName: String,
                        routingKeys: Seq[String],
                        persistentQueue: Boolean,
                        storageLevel: StorageLevel)
@@ -86,14 +90,14 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
 
      val queueName = routingKeys.nonEmpty match {
        case true =>
-         channel.exchangeDeclare(exchangeName.get, DirectExchangeType)
+         channel.exchangeDeclare(exchangeName, DirectExchangeType)
          val queueName = channel.queueDeclare().getQueue
 
-         routingKeys.foreach(key => channel.queueBind(queueName, exchangeName.get, key))
+         routingKeys.foreach(key => channel.queueBind(queueName, exchangeName, key))
          queueName
        case false =>
-         channel.queueDeclare(rabbitMQQueueName.get, persistentQueue, false, false, new util.HashMap(0))
-         rabbitMQQueueName.get
+         channel.queueDeclare(rabbitMQQueueName, persistentQueue, false, false, new util.HashMap(0))
+         rabbitMQQueueName
      }
 
     log.info("RabbitMQ Input waiting for messages")

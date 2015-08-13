@@ -100,9 +100,9 @@ object RabbitMQUtils {
     new RabbitMQInputDStream(
       ssc,
       None,
-      rabbitMQHost,
-      rabbitMQPort,
-      rabbitMQVHost,
+      Some(rabbitMQHost),
+      Some(rabbitMQPort),
+      Some(rabbitMQVHost),
       Some(exchangeName),
       routingKeys,
       persistentQueue,
