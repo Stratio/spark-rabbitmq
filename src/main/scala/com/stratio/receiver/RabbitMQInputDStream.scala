@@ -84,21 +84,17 @@ class RabbitMQReceiver(rabbitMQQueueName: Option[String],
   /** Create a socket connection and receive data until receiver is stopped */
   private def receive(connection: Connection, channel: Channel) {
 
-    val queueName = routingKeys.nonEmpty match {
-      case true => {
-        channel.exchangeDeclare(exchangeName.get, DirectExchangeType)
-        val queueName = channel.queueDeclare().getQueue
+     val queueName = routingKeys.nonEmpty match {
+       case true =>
+         channel.exchangeDeclare(exchangeName.get, DirectExchangeType)
+         val queueName = channel.queueDeclare().getQueue
 
-        for (routingKey: String <- routingKeys) {
-          channel.queueBind(queueName, exchangeName.get, routingKey)
-        }
-        queueName
-      }
-      case false => {
-        channel.queueDeclare(rabbitMQQueueName.get, persistentQueue, false, false, new util.HashMap(0))
-        rabbitMQQueueName.get
-      }
-    }
+         routingKeys.foreach(key => channel.queueBind(queueName, exchangeName.get, key))
+         queueName
+       case false =>
+         channel.queueDeclare(rabbitMQQueueName.get, persistentQueue, false, false, new util.HashMap(0))
+         rabbitMQQueueName.get
+     }
 
     log.info("RabbitMQ Input waiting for messages")
     val consumer: QueueingConsumer = new QueueingConsumer(channel)
