@@ -44,15 +44,16 @@ object RabbitMQUtils {
                    storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
                     ): ReceiverInputDStream[String] = {
     new RabbitMQInputDStream(
-      ssc,
-      Some(rabbitMQQueueName),
-      rabbitMQHost,
-      rabbitMQPort,
-      rabbitMQVHost,
-      None,
-      Seq(),
-      persistentQueue,
-      storageLevel)
+        ssc,
+        Some(rabbitMQQueueName),
+        Some(rabbitMQHost),
+        Some(rabbitMQPort),
+        Some(rabbitMQVHost),
+        None,
+        Seq(),
+        persistentQueue,
+        storageLevel
+      )
   }
 
   /**
