@@ -30,54 +30,15 @@ mvn clean install
 
 ### Scala API
 
-There are two ways of creating a receiver. Consuming data directly from a RabbitMQ queue or consuming data from a 
-RabbitMQ queue through a direct exchange:
-
 ```
-val receiverStream = RabbitMQUtils.createStreamFromAQueue(sparkStreamingContext, 
-                                                          rabbitMQHost, 
-                                                          rabbitMQPort, 
-                                                          rabbitMQQueueName, 
-                                                          storageLevel)
-```
-
-```
-val receiverStream 
-  = RabbitMQUtils.createStreamFromRoutingKeys(sparkStreamingContext, 
-                                              rabbitMQHost, 
-                                              rabbitMQPort, 
-                                              exchangeName, 
-                                              Seq("routingKey1", "routingKey2", ...), 
-                                              storageLevel)
+val receiverStream = RabbitMQUtils.createStream(sparkStreamingContext, params)
 ```
 
 ### Java API
 
-As in the Scala API there are two ways of creating a receiver. Consuming data directly from a RabbitMQ queue or 
-consuming data from a RabbitMQ queue through a direct exchange:
-
 ```
-JavaReceiverInputDStream receiverStream 
-  = RabbitMQUtils.createJavaStreamFromAQueue(javaSparkStreamingContext,
-                                             rabbitMQHost, 
-                                             rabbitMQPort,
-                                             rabbitMQQueueName, 
-                                             storageLevel);
+JavaReceiverInputDStream receiverStream = RabbitMQUtils.createJavaStream(javaSparkStreamingContext, params);
 ```
-
-```
-JavaReceiverInputDStream receiverStream 
-  = RabbitMQUtils.createJavaStreamFromRoutingKeys(javaSparkStreamingContext, 
-                                              rabbitMQHost, 
-                                              rabbitMQPort, 
-                                              exchangeName, 
-                                              routingKeyList, 
-                                              storageLevel)
-```
-
-
-
-
 
 # License #
 
