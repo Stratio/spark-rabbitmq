@@ -34,11 +34,11 @@ class RabbitMQInputDStream(@transient ssc_ : StreamingContext,
                             params: Map[String, String]
                             ) extends ReceiverInputDStream[String](ssc_) with Logging {
 
-  private val storageLevelparam: String = params.get("storageLevel").getOrElse("MEMORY_AND_DISK_SER_2")
+  private val storageLevelParam: String = params.get("storageLevel").getOrElse("MEMORY_AND_DISK_SER_2")
 
   override def getReceiver(): Receiver[String] = {
 
-    new RabbitMQReceiver(params, StorageLevel.fromString(storageLevelparam))
+    new RabbitMQReceiver(params, StorageLevel.fromString(storageLevelParam))
   }
 }
 
@@ -49,8 +49,8 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
   private val host: Option[String] = params.get("host")
   private val rabbitMQQueueName: Option[String] = params.get("queueName")
   private val exchangeName: Option[String] = params.get("exchangeName")
-  private val exchangeType: String = params.get("exchangeName").getOrElse("direct")
-  private val routingKeys: String = params.get("routingKeys").getOrElse("queue")
+  private val exchangeType: String = params.get("exchangeType").getOrElse("direct")
+  private val routingKeys: Option[String] = params.get("routingKeys")
   private val vHost: Option[String] = params.get("vHost")
   private val username: Option[String] = params.get("username")
   private val password: Option[String] = params.get("password")
@@ -86,14 +86,14 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
       channel.basicConsume(queueName, true, consumer)
   
       while (!isStopped()) {
-        log.info("wating for data")
+        log.info("waiting for data")
         val delivery: Delivery = consumer.nextDelivery()
         log.info("storing data")
         store(new Predef.String(delivery.getBody))
       }
 
     } catch {
-      case unknown : Throwable => log.error("Got this unknown exception: " + unknown)
+      case unknown : Throwable => log.error("Got this unknown exception: " + unknown, unknown)
     } 
     finally {
       log.info("it has been stopped")
@@ -104,13 +104,13 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
   }
 
   def getQueueName(channel: Channel): String = {
-    val queueName = !routingKeys.isEmpty match {
+    routingKeys.isDefined match {
       case true => {
         log.info("declaring topic queue")
         channel.exchangeDeclare(exchangeName.get, exchangeType, true)
-        val queueName = channel.queueDeclare("sparkQueue", true, false, false, new util.HashMap(0)).getQueue()
+        val queueName = channel.queueDeclare().getQueue()
 
-        for (routingKey: String <- routingKeys.split(",")) {
+        for (routingKey: String <- routingKeys.get.split(",")) {
           log.info("binding to routing key " + routingKey)
           channel.queueBind(queueName, exchangeName.get, routingKey)
         }
@@ -122,7 +122,6 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
         rabbitMQQueueName.get
       }
     }
-    queueName
   }
 
   private def getConnectionAndChannel: Try[(Connection, Channel)] = {
@@ -149,6 +148,8 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
         factory.setVirtualHost(_)
         log.info(s"Connecting to virtual host ${factory.getVirtualHost}")
       }
+      case None =>
+        log.info("No virtual host configured")
     }
 
     username.map(factory.setUsername(_))
