@@ -16,6 +16,8 @@
 
 package com.stratio.receiver
 
+import scala.collection.JavaConverters._
+
 import scala.reflect.ClassTag
 
 import org.apache.spark.storage.StorageLevel
@@ -40,9 +42,9 @@ object RabbitMQUtils {
    * @param params       RabbitMQ params
    */
   def createJavaStream(jssc: JavaStreamingContext,
-                       params: Map[String, String]): JavaReceiverInputDStream[String] = {
+                       params: java.util.Map[String, String]): JavaReceiverInputDStream[String] = {
     implicitly[ClassTag[AnyRef]].asInstanceOf[ClassTag[String]]
-    createStream(jssc.ssc, params)
+    createStream(jssc.ssc, params.asScala.toMap)
   }
 
 }
