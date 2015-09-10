@@ -63,7 +63,13 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
   def onStart() {
     implicit val akkaSystem = akka.actor.ActorSystem()
     getConnectionAndChannel match {
-      case Success((connection: Connection, channel: Channel)) => log.info("onStart, Connecting.."); receive(connection, channel)
+      //case Success((connection: Connection, channel: Channel)) => log.info("onStart, Connecting.."); receive(connection, channel)
+      case Success((connection: Connection, channel: Channel)) => log.info("onStart, Connecting..");
+        new Thread() {
+          override def run() {
+            receive(connection, channel)
+          }
+        }.start()
       case Failure(f) => log.error("Could not connect"); restart("Could not connect", f)
     }
   }
@@ -144,8 +150,8 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
     val factory: ConnectionFactory = new ConnectionFactory
 
     vHost match {
-      case Some(_) => {
-        factory.setVirtualHost(_)
+      case Some(v) => {
+        factory.setVirtualHost(v)
         log.info(s"Connecting to virtual host ${factory.getVirtualHost}")
       }
       case None =>
