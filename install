@@ -1,0 +1,3 @@
+mvn package
+mvn install:install-file -Dfile=target/rabbitmq-0.2.0-SNAPSHOT.jar -DgroupId=com.stratio.receiver -DartifactId=rabbitmq -Dversion=0.2.0 -Dpackaging=jar -DgeneratePom=true
+
