@@ -84,7 +84,8 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
   private def receive(connection: Connection, channel: Channel) {
 
     try {
-      val queueName: String = getQueueName(channel)
+      // val queueName: String = getQueueName(channel)
+      val queueName: String = rabbitMQQueueName.get
   
       log.info("RabbitMQ Input waiting for messages")
       val consumer: QueueingConsumer = new QueueingConsumer(channel)
