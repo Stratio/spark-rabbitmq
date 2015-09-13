@@ -149,8 +149,8 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
     val factory: ConnectionFactory = new ConnectionFactory
 
     vHost match {
-      case Some(_) => {
-        factory.setVirtualHost(_)
+      case Some(v) => {
+        factory.setVirtualHost(v)
         log.info(s"Connecting to virtual host ${factory.getVirtualHost}")
       }
       case None =>
