@@ -34,7 +34,7 @@ class RabbitMQInputDStream(@transient ssc_ : StreamingContext,
                             params: Map[String, String]
                             ) extends ReceiverInputDStream[String](ssc_) with Logging {
 
-  private val storageLevelParam: String = params.get("storageLevel").getOrElse("MEMORY_AND_DISK_SER_2")
+  private val storageLevelParam: String = params.getOrElse("storageLevel", "MEMORY_AND_DISK_SER_2")
 
   override def getReceiver(): Receiver[String] = {
 
@@ -46,10 +46,10 @@ private[receiver]
 class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
   extends Receiver[String](storageLevel) with Logging {
 
-  private val host: Option[String] = params.get("host")
+  private val host: String = params.getOrElse("host", "localhost")
   private val rabbitMQQueueName: Option[String] = params.get("queueName")
-  private val exchangeName: Option[String] = params.get("exchangeName")
-  private val exchangeType: String = params.get("exchangeType").getOrElse("direct")
+  private val exchangeName: String = params.getOrElse("exchangeName", "rabbitmq-exchange")
+  private val exchangeType: String = params.getOrElse("exchangeType", "direct")
   private val routingKeys: Option[String] = params.get("routingKeys")
   private val vHost: Option[String] = params.get("vHost")
   private val username: Option[String] = params.get("username")
@@ -109,35 +109,44 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
   }
 
   def getQueueName(channel: Channel): String = {
-    routingKeys.isDefined match {
-      case true => {
+    val queueName = checkQueueName()
+    routingKeys match {
+      case Some(routingKey) => {
         log.info("declaring topic queue")
-        channel.exchangeDeclare(exchangeName.get, exchangeType, true)
-        val queueName = channel.queueDeclare().getQueue()
+        channel.exchangeDeclare(exchangeName, exchangeType, true)
 
-        for (routingKey: String <- routingKeys.get.split(",")) {
+          val queue = channel.queueDeclare(queueName, true, false, false, new util.HashMap(0)).getQueue()
+
+        for (routingKey: String <- routingKey.split(",")) {
           log.info("binding to routing key " + routingKey)
-          channel.queueBind(queueName, exchangeName.get, routingKey)
+          channel.queueBind(queue, exchangeName, routingKey)
         }
-        queueName
+        queue
       }
-      case false => {
+      case None => {
         log.info("declaring direct queue")
-        channel.queueDeclare(rabbitMQQueueName.get, true, false, false, new util.HashMap(0))
-        rabbitMQQueueName.get
+        channel.queueDeclare(queueName, true, false, false, new util.HashMap(0))
+        queueName
       }
     }
   }
 
+  def checkQueueName(): String = {
+    rabbitMQQueueName.getOrElse({
+      log.warn("The name of the queue will be a default name")
+      s"default-queue-${new DateTime(System.currentTimeMillis())}"
+    })
+  }
+
   private def getConnectionAndChannel: Try[(Connection, Channel)] = {
-    log.info("Rabbit host addresses are :" + host.get)
-    for ( address <- Address.parseAddresses(host.get) ) {
+    log.info("Rabbit host addresses are : " + host)
+    for ( address <- Address.parseAddresses(host) ) {
       log.info("Address " + address.toString())
     }
 
     log.info("creating new connection and channel")
     for {
-      connection: Connection <- Try(getConnectionFactory.newConnection(Address.parseAddresses(host.get)))
+      connection: Connection <- Try(getConnectionFactory.newConnection(Address.parseAddresses(host)))
       channel: Channel <- Try(connection.createChannel)
     } yield {
       log.info("created new connection and channel")
