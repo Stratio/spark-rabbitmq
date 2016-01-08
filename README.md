@@ -5,7 +5,7 @@ from [RabbitMQ](https://www.rabbitmq.com/).
 
 ## Requirements
 
-This library requires Spark 1.3+, Scala 2.10+, RabbitMQ 3.5+
+This library requires Spark 1.4+, Scala 2.10+, RabbitMQ 3.5+
 
 ## Using the library
 
@@ -27,6 +27,18 @@ The other one is to clone the full repository and build the project:
 git clone https://github.com/Stratio/RabbitMQ-Receiver.git
 mvn clean install
 ```
+
+### Build
+
+There are two profiles to package with different versions of Spark
+
+- To package it with Spark-1.4:
+
+`mvn clean package -P spark-1.4`
+
+- To package it with Spark-1.5 (default):
+
+`mvn clean package -P spark-1.4`
 
 ### Scala API
 
