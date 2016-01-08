@@ -19,6 +19,7 @@ package com.stratio.receiver
 import java.util
 
 import com.rabbitmq.client.QueueingConsumer.Delivery
+import org.joda.time.DateTime
 
 import scala.util._
 
