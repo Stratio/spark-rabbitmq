@@ -30,6 +30,8 @@ import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
 import org.apache.spark.streaming.receiver.Receiver
 
+import scala.collection.JavaConverters._
+
 private[receiver]
 class RabbitMQInputDStream(@transient ssc_ : StreamingContext,
                             params: Map[String, String]
@@ -55,6 +57,13 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
   private val vHost: Option[String] = params.get("vHost")
   private val username: Option[String] = params.get("username")
   private val password: Option[String] = params.get("password")
+  private val x_max_lenght: Option[String] = params.get("x-max-length")
+  private val x_message_ttl: Option[String] = params.get("x-message-ttl")
+  private val x_expires: Option[String] = params.get("x-expires")
+  private val x_max_length_bytes: Option[String] = params.get("x-max-length-bytes")
+  private val x_dead_letter_exchange: Option[String] = params.get("x-dead-letter-exchange")
+  private val x_dead_letter_routing_key: Option[String] = params.get("x-dead-letter-routing-key")
+  private val x_max_priority: Option[String] = params.get("x-max-priority")
 
   val DirectExchangeType: String = "direct"
   val TopicExchangeType: String = "topic"
@@ -126,11 +135,41 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
       }
       case None => {
         log.info("declaring direct queue")
-        channel.queueDeclare(queueName, true, false, false, new util.HashMap(0))
+        val params = getParams.asJava
+        channel.queueDeclare(queueName, true, false, false,
+        params)
         queueName
       }
     }
   }
+
+   def getParams() : Map[String, AnyRef] = {
+     var params: Map[String, AnyRef] = Map.empty
+
+     if (x_max_lenght.isDefined) {
+       params += ("x-max-length" -> x_max_lenght.get.toInt.asInstanceOf[AnyRef])
+     }
+     if (x_message_ttl.isDefined) {
+       params += ("x-message-ttl" -> x_message_ttl.get.toInt.asInstanceOf[AnyRef])
+     }
+     if (x_expires.isDefined) {
+       params += ("x-expires" -> x_expires.get.toInt.asInstanceOf[AnyRef])
+     }
+     if (x_max_length_bytes.isDefined) {
+       params += ("x-max-length-bytes" -> x_max_length_bytes.get.toInt.asInstanceOf[AnyRef])
+     }
+     if (x_dead_letter_exchange.isDefined) {
+       params += ("x-dead-letter-exchange" -> x_dead_letter_exchange.get.toString.asInstanceOf[AnyRef])
+     }
+     if (x_dead_letter_routing_key.isDefined) {
+       params += ("x-dead-letter-routing-key" -> x_dead_letter_routing_key.get.toString.asInstanceOf[AnyRef])
+     }
+     if (x_max_priority.isDefined) {
+       params += ("x-max-priority" -> x_max_priority.get.toInt.asInstanceOf[AnyRef])
+     }
+     params
+   }
+
 
   def checkQueueName(): String = {
     rabbitMQQueueName.getOrElse({
@@ -169,7 +208,6 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
 
     username.map(factory.setUsername(_))
     password.map(factory.setPassword(_))
-
     factory
   }
 }
