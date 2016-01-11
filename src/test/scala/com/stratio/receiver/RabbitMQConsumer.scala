@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.stratio.example
+package com.stratio.receiver
 
 import com.stratio.receiver.RabbitMQUtils
 import org.apache.spark.SparkConf
