@@ -35,13 +35,23 @@ object RabbitMQConsumer {
     // Setup the receiver stream to connect to RabbitMQ.
     // Check the RabbitMQInputDStream class to see the full list of
     // options, along with the default values.
+    // All the parameters are shown below, remove the ones
+    // that you don't need
     val receiverStream = RabbitMQUtils.createStream(ssc, Map(
       "host" -> "localhost",
       "queueName" -> "rabbitmq-queue",
       "exchangeName" -> "rabbitmq-exchange",
       "vHost" -> "rabbitmq-vHost",
       "username" -> "rabbitmq-user",
-      "password" -> "rabbitmq-password"
+      "password" -> "rabbitmq-password",
+      "x-max-length" -> "value",
+      "x-max-length" -> "value",
+      "x-message-ttl" -> "value",
+      "x-expires" -> "value",
+      "x-max-length-bytes" -> "value",
+      "x-dead-letter-exchange" -> "value",
+      "x-dead-letter-routing-key" -> "value",
+      "x-max-priority" -> "value"
     ))
 
     // Start up the receiver.
