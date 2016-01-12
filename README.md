@@ -50,7 +50,28 @@ val receiverStream = RabbitMQUtils.createStream(sparkStreamingContext, params)
 
 ```
 JavaReceiverInputDStream receiverStream = RabbitMQUtils.createJavaStream(javaSparkStreamingContext, params);
+
+
 ```
+
+| Parameter                 | Description                  | Optional                             |
+|---------------------------|------------------------------|--------------------------------------|
+| host                      | RabbitMQ host                | Yes (default: localhost)             |
+| queueName                 | Queue name                   | Yes                                  |
+| exchangeName              | Exchange name                | Yes (default: rabbitmq-exchange)     |
+| exchangeType              | Exchange type                | Yes (default: direct)                |
+| routingKeys               | Routing keys comma separated | Yes                                  |
+| vHost                     | RabbitMQ vHost               | Yes                                  |
+| username                  | RabbitMQ username            | Yes                                  |
+| password                  | RabbitMQ password            | Yes                                  |
+| storageLevel              | Apache Spark storage level   | Yes (default: MEMORY_AND_DISK_SER_2) |
+| x-max-length              | RabbitMQ queue property      | Yes                                  |
+| x-message-ttl             | RabbitMQ queue property      | Yes                                  |
+| x-expires                 | RabbitMQ queue property      | Yes                                  |
+| x-max-length-bytes        | RabbitMQ queue property      | Yes                                  |
+| x-dead-letter-exchange    | RabbitMQ queue property      | Yes                                  |
+| x-dead-letter-routing-key | RabbitMQ queue property      | Yes                                  |
+| x-max-priority            | RabbitMQ queue property      | Yes                                  |
 
 # License #
 
