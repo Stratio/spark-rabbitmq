@@ -2,9 +2,10 @@
 
 Only listing significant user-visible, not internal code cleanups and minor bug fixes. 
 
-## 0.2.0 (upcoming)
+## 0.2.0 (January 2016)
 
-* Adapted to continuous delivery flow
+* Compatibility for Spark versions 1.4 and 1.5
+* Bug fixing
 
 ## 0.1.0 (sometime)
 

@@ -27,13 +27,13 @@
     </parent>
 
     <groupId>com.stratio.receiver</groupId>
-    <artifactId>rabbitmq</artifactId>
+    <artifactId>spark-rabbitmq</artifactId>
     <version>0.2.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
-        <module>rabbitmq_spark_1.4</module>
-        <module>rabbitmq_spark_1.5</module>
+        <module>spark-rabbitmq_1.4</module>
+        <module>spark-rabbitmq_1.5</module>
     </modules>
 
     <url>https://github.com/Stratio/RabbitMQ-Receiver</url>
