@@ -119,28 +119,38 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
   }
 
   def getQueueName(channel: Channel): String = {
+    // Get the queue name to use (explicit vs auto-generated).
     val queueName = checkQueueName()
-    routingKeys match {
-      case Some(routingKey) => {
-        log.info("declaring topic queue")
-        channel.exchangeDeclare(exchangeName, exchangeType, true)
 
-          val queue = channel.queueDeclare(queueName, true, false, false, new util.HashMap(0)).getQueue()
+    // If no exchange was specified, then create a direct connection to the queue.
+    if(exchangeName == null || exchangeName.trim.isEmpty) {
+      log.info("exchange was not configured; declaring direct queue")
+      channel.queueDeclare(queueName, true, false, false, getParams.asJava)
+    }
+    // If an exchange was provided, then connect to it.
+    else {
+      log.info(s"declaring exchange '$exchangeName' of type '$exchangeType'")
+      channel.exchangeDeclare(exchangeName, exchangeType, true)
 
-        for (routingKey: String <- routingKey.split(",")) {
-          log.info("binding to routing key " + routingKey)
-          channel.queueBind(queue, exchangeName, routingKey)
+      log.info("declaring topic queue")
+      channel.queueDeclare(queueName, true, false, false, new util.HashMap(0))
+
+      // Bind the exchange to the queue.
+      routingKeys match {
+        case Some(routingKey) => {
+          // If routing keys were provided, then bind using them.
+          for (routingKey: String <- routingKey.split(",")) {
+            log.info(s"binding to routing key '$routingKey'")
+            channel.queueBind(queueName, exchangeName, routingKey)
+          }
         }
-        queue
-      }
-      case None => {
-        log.info("declaring direct queue")
-        val params = getParams.asJava
-        channel.queueDeclare(queueName, true, false, false,
-        params)
-        queueName
+        case None => {
+          log.info("binding exchange using empty routing key")
+          channel.queueBind(queueName, exchangeName, "")
+        }
       }
     }
+    queueName
   }
 
    def getParams() : Map[String, AnyRef] = {
