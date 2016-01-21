@@ -51,7 +51,7 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
 
   private val host: String = params.getOrElse("host", "localhost")
   private val rabbitMQQueueName: Option[String] = params.get("queueName")
-  private val exchangeName: String = params.getOrElse("exchangeName", "rabbitmq-exchange")
+  private val exchangeName: Option[String] = params.get("exchangeName")
   private val exchangeType: String = params.getOrElse("exchangeType", "direct")
   private val routingKeys: Option[String] = params.get("routingKeys")
   private val vHost: Option[String] = params.get("vHost")
@@ -122,32 +122,34 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
     // Get the queue name to use (explicit vs auto-generated).
     val queueName = checkQueueName()
 
-    // If no exchange was specified, then create a direct connection to the queue.
-    if(exchangeName == null || exchangeName.trim.isEmpty) {
-      log.info("exchange was not configured; declaring direct queue")
-      channel.queueDeclare(queueName, true, false, false, getParams.asJava)
-    }
-    // If an exchange was provided, then connect to it.
-    else {
-      log.info(s"declaring exchange '$exchangeName' of type '$exchangeType'")
-      channel.exchangeDeclare(exchangeName, exchangeType, true)
+    exchangeName match {
+      case Some(exchangeName) => {
+        // If an exchange was provided, then connect to it.
+        log.info(s"declaring exchange '$exchangeName' of type '$exchangeType'")
+        channel.exchangeDeclare(exchangeName, exchangeType, true)
 
-      log.info("declaring topic queue")
-      channel.queueDeclare(queueName, true, false, false, new util.HashMap(0))
+        log.info("declaring topic queue")
+        channel.queueDeclare(queueName, true, false, false, new util.HashMap(0))
 
-      // Bind the exchange to the queue.
-      routingKeys match {
-        case Some(routingKey) => {
-          // If routing keys were provided, then bind using them.
-          for (routingKey: String <- routingKey.split(",")) {
-            log.info(s"binding to routing key '$routingKey'")
-            channel.queueBind(queueName, exchangeName, routingKey)
+        // Bind the exchange to the queue.
+        routingKeys match {
+          case Some(routingKey) => {
+            // If routing keys were provided, then bind using them.
+            for (routingKey: String <- routingKey.split(",")) {
+              log.info(s"binding to routing key '$routingKey'")
+              channel.queueBind(queueName, exchangeName, routingKey)
+            }
+          }
+          case None => {
+            log.info("binding exchange using empty routing key")
+            channel.queueBind(queueName, exchangeName, "")
           }
         }
-        case None => {
-          log.info("binding exchange using empty routing key")
-          channel.queueBind(queueName, exchangeName, "")
-        }
+      }
+      case None => {
+        // If no exchange was specified, then create a direct connection to the queue.
+        log.info("exchange was not configured; declaring direct queue")
+        channel.queueDeclare(queueName, true, false, false, getParams.asJava)
       }
     }
     queueName
