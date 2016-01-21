@@ -30,15 +30,15 @@ mvn clean install
 
 ### Build
 
-There are two profiles to package with different versions of Spark
+There are two modules to package with different versions of Spark
 
 - To package it with Spark-1.4:
 
-`mvn clean package -P spark-1.4`
+`mvn clean package -pl com.stratio.receiver:spark-rabbitmq_1.4`
 
 - To package it with Spark-1.5 (default):
 
-`mvn clean package -P spark-1.4`
+`mvn clean package -pl com.stratio.receiver:spark-rabbitmq_1.5`
 
 ### Scala API
 
