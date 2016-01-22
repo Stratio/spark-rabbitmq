@@ -119,28 +119,31 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
   }
 
   def getQueueName(channel: Channel): String = {
+    // Get the queue name to use (explicit vs auto-generated).
     val queueName = checkQueueName()
+
+    // Connect to the exchange.
+    log.info(s"declaring exchange '$exchangeName' of type '$exchangeType'")
+    channel.exchangeDeclare(exchangeName, exchangeType, true)
+
+    log.info("declaring queue")
+    channel.queueDeclare(queueName, true, false, false, getParams.asJava)
+
+    // Bind the exchange to the queue.
     routingKeys match {
       case Some(routingKey) => {
-        log.info("declaring topic queue")
-        channel.exchangeDeclare(exchangeName, exchangeType, true)
-
-          val queue = channel.queueDeclare(queueName, true, false, false, new util.HashMap(0)).getQueue()
-
+        // If routing keys were provided, then bind using them.
         for (routingKey: String <- routingKey.split(",")) {
-          log.info("binding to routing key " + routingKey)
-          channel.queueBind(queue, exchangeName, routingKey)
+          log.info(s"binding to routing key '$routingKey'")
+          channel.queueBind(queueName, exchangeName, routingKey)
         }
-        queue
       }
       case None => {
-        log.info("declaring direct queue")
-        val params = getParams.asJava
-        channel.queueDeclare(queueName, true, false, false,
-        params)
-        queueName
+        log.info("binding exchange using empty routing key")
+        channel.queueBind(queueName, exchangeName, "")
       }
     }
+    queueName
   }
 
    def getParams() : Map[String, AnyRef] = {
