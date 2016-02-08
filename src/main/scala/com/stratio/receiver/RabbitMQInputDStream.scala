@@ -98,13 +98,14 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
       log.info("RabbitMQ Input waiting for messages")
       val consumer: QueueingConsumer = new QueueingConsumer(channel)
       log.info("start consuming data")
-      channel.basicConsume(queueName, true, consumer)
+      channel.basicConsume(queueName, false, consumer)
   
       while (!isStopped()) {
         log.info("waiting for data")
         val delivery: Delivery = consumer.nextDelivery()
         log.info("storing data")
         store(new Predef.String(delivery.getBody))
+        channel.basicAck(delivery.getEnvelope.getDeliveryTag,false)
       }
 
     } catch {
