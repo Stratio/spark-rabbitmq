@@ -13,15 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.receiver
 
-import java.util
+package org.apache.spark.streaming.rabbitmq.receiver
+
+import java.util.Calendar
 
 import com.rabbitmq.client.QueueingConsumer.Delivery
-import org.joda.time.DateTime
-
-import scala.util._
-
 import com.rabbitmq.client._
 import org.apache.spark.Logging
 import org.apache.spark.storage.StorageLevel
@@ -30,8 +27,9 @@ import org.apache.spark.streaming.dstream.ReceiverInputDStream
 import org.apache.spark.streaming.receiver.Receiver
 
 import scala.collection.JavaConverters._
+import scala.util._
 
-private[receiver]
+private[rabbitmq]
 class RabbitMQInputDStream(@transient ssc_ : StreamingContext,
                             params: Map[String, String]
                             ) extends ReceiverInputDStream[String](ssc_) with Logging {
@@ -44,11 +42,11 @@ class RabbitMQInputDStream(@transient ssc_ : StreamingContext,
   }
 }
 
-private[receiver]
+private[rabbitmq]
 class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
   extends Receiver[String](storageLevel) with Logging {
 
-  private val host: String = params.getOrElse("host", "localhost")
+  private val host: String = params.getOrElse("hosts", "localhost")
   private val rabbitMQQueueName: Option[String] = params.get("queueName")
   private val exchangeName: String = params.getOrElse("exchangeName", "rabbitmq-exchange")
   private val exchangeType: String = params.getOrElse("exchangeType", "direct")
@@ -177,7 +175,7 @@ class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
   def checkQueueName(): String = {
     rabbitMQQueueName.getOrElse({
       log.warn("The name of the queue will be a default name")
-      s"default-queue-${new DateTime(System.currentTimeMillis())}"
+      s"default-queue-${Calendar.getInstance().getTime.toString}"
     })
   }
 

@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.receiver
+
+package org.apache.spark.streaming.rabbitmq
+
+import org.apache.spark.streaming.rabbitmq.receiver.RabbitMQInputDStream
 
 import scala.collection.JavaConverters._
 
 import scala.reflect.ClassTag
 
-import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.api.java.{JavaReceiverInputDStream, JavaStreamingContext}
 import org.apache.spark.streaming.dstream.ReceiverInputDStream

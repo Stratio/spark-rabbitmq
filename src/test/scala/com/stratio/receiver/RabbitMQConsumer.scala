@@ -15,9 +15,9 @@
  */
 package com.stratio.receiver
 
-import com.stratio.receiver.RabbitMQUtils
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.streaming.rabbitmq.RabbitMQUtils
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 object RabbitMQConsumer {
