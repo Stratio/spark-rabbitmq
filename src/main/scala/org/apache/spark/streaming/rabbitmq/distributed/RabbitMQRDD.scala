@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016 Stratio (http://stratio.com)
+ * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,16 @@
 
 package org.apache.spark.streaming.rabbitmq.distributed
 
-import com.rabbitmq.client.QueueingConsumer
+import akka.actor.ActorSystem
+import com.rabbitmq.client.ConsumerCancelledException
 import org.apache.spark.rdd.RDD
-import org.apache.spark.streaming.rabbitmq.Consumer
+import org.apache.spark.streaming.rabbitmq.consumer.Consumer
 import org.apache.spark.util.NextIterator
-import org.apache.spark.{Logging, Partition, SparkContext, TaskContext}
+import org.apache.spark.{Logging, Partition, SparkContext, SparkException, TaskContext}
 
+import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import scala.util.{Failure, Success, Try}
 
 private[rabbitmq]
 class RabbitMQRDD[R: ClassTag](
@@ -33,28 +36,27 @@ class RabbitMQRDD[R: ClassTag](
                               ) extends RDD[R](sc, Nil) with Logging {
 
   override def getPartitions: Array[Partition] = {
+    val parallelism = Consumer.getParallelism(rabbitMQParams)
     val keys = if (distributedKeys.nonEmpty)
       distributedKeys
     else Consumer.getExchangesDistributed(rabbitMQParams)
-    val locations = Consumer.getHosts(rabbitMQParams)
 
-    keys.zipWithIndex.map { case (key, index) =>
-      new RabbitMQPartition(
-        index,
-        key.queue,
-        key.exchangeName,
-        key.exchangeType,
-        key.routingKey,
-        locations,
-        keys.size > 1
-      )
+    keys.zipWithIndex.flatMap { case (key, index) =>
+      (0 until parallelism).map(indexParallelism =>
+        new RabbitMQPartition(
+          parallelism * index + indexParallelism,
+          key.queue,
+          key.exchangeAndRouting,
+          key.connectionParams,
+          parallelism > 1
+        ))
     }.toArray
   }
 
   override def getPreferredLocations(thePart: Partition): Seq[String] = {
     val part = thePart.asInstanceOf[RabbitMQPartition]
 
-    Seq(part.toString)
+    Seq(Consumer.getHosts(part.connectionParams))
   }
 
   override def compute(thePart: Partition, context: TaskContext): Iterator[R] =
@@ -64,41 +66,81 @@ class RabbitMQRDD[R: ClassTag](
                                      part: RabbitMQPartition,
                                      context: TaskContext) extends NextIterator[R] {
 
-    context.addTaskCompletionListener { context => closeIfNeeded() }
+    import system.dispatcher
 
-    log.info(s"Computing queue ${part.queue}, exchange ${part.exchangeName.getOrElse("")}, exchangeType " +
-      s"${part.exchangeType.getOrElse("")} addresses ${part.addresses}")
-
-    val consumer = Consumer(rabbitMQParams)
-
-    consumer.setQueue(part.queue, part.exchangeName, part.exchangeType, part.routingKeys, rabbitMQParams)
-
-    if (part.withFairDispatch)
-      consumer.setFairDispatchQoS()
-
-    val queueConsumer: QueueingConsumer = consumer.startConsumer
+    val rabbitParams = rabbitMQParams ++ part.connectionParams
+    val consumer = getConsumer(part, rabbitParams)
+    val queueConsumer = consumer.startConsumer
     var numMessages = 0
+    val system = RabbitMQRDD.getActorSystem
+    val receiveTime = Consumer.getReceiveTime(rabbitMQParams)
+
+    log.info(s"Receiving data in Partition ${part.index} from \t[${part.toStringPretty}]")
+
+    context.addTaskCompletionListener(context => {
+      if (context.isInterrupted()) {
+        RabbitMQRDD.shutDownActorSystem()
+        log.info(s"Task interrupted, closing RabbitMQ connections in partition: ${part.index}")
+        closeIfNeeded()
+      }
+    })
+
+    system.scheduler.scheduleOnce(receiveTime milliseconds) {
+      log.debug(s"Received $numMessages messages by Partition : ${part.index}")
+      finished = true
+      queueConsumer.handleCancel("timeout")
+    }
 
     override def getNext(): R = {
-      if (numMessages < Consumer.getMaxMessagesPerPartition(rabbitMQParams)) {
-        val delivery = queueConsumer.nextDelivery()
+      if (!finished || numMessages < Consumer.getMaxMessagesPerPartition(rabbitMQParams)) {
+        Try {
+          val delivery = queueConsumer.nextDelivery()
 
-        numMessages += 1
-        messageHandler(delivery.getBody)
-      } else {
-        numMessages = 0
-        finished = true
-        null.asInstanceOf[R]
-      }
+          if (Consumer.sendingBasicAckFromParams(rabbitMQParams))
+            consumer.sendBasicAck(delivery)
+
+          numMessages += 1
+          messageHandler(delivery.getBody)
+        } match {
+          case Success(data) =>
+            data
+          case Failure(e: ConsumerCancelledException) =>
+            finishProcess()
+          case Failure(e) =>
+            throw new SparkException(s"Error receiving data from RabbitMQ with error: ${e.getLocalizedMessage}")
+        }
+      } else finishProcess()
     }
 
     override def close(): Unit = consumer.close()
+
+    private def finishProcess(): R = {
+      finished = true
+      null.asInstanceOf[R]
+    }
+
+    private def getConsumer(part: RabbitMQPartition, rabbitParams: Map[String, String]): Consumer = {
+      val consumer = Consumer(rabbitParams)
+      consumer.setQueue(
+        part.queue,
+        part.exchangeAndRouting.exchangeName,
+        part.exchangeAndRouting.exchangeType,
+        part.exchangeAndRouting.routingKeys,
+        rabbitParams
+      )
+      if (part.withFairDispatch)
+        consumer.setFairDispatchQoS()
+
+      consumer
+    }
   }
 
 }
 
 private[rabbitmq]
-object RabbitMQRDD {
+object RabbitMQRDD extends Logging {
+
+  @volatile private var system: Option[ActorSystem] = None
 
   def apply[R: ClassTag](sc: SparkContext,
                          distributedKeys: Seq[RabbitMQDistributedKey],
@@ -107,5 +149,22 @@ object RabbitMQRDD {
                         ): RabbitMQRDD[R] = {
 
     new RabbitMQRDD[R](sc, distributedKeys, rabbitMQParams, messageHandler)
+  }
+
+  def getActorSystem: ActorSystem = {
+    synchronized {
+      if (system.isEmpty || (system.isDefined && system.get.isTerminated))
+        system = Option(akka.actor.ActorSystem(s"system-${System.currentTimeMillis()}"))
+      system.get
+    }
+  }
+
+  def shutDownActorSystem(): Unit = {
+    synchronized {
+      system.foreach(actorSystem => {
+        log.debug(s"Shutting down actor system: ${actorSystem.name}")
+        actorSystem.shutdown()
+      })
+    }
   }
 }

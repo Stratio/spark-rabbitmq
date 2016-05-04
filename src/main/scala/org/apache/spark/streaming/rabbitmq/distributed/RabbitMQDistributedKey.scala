@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2016 Stratio (http://stratio.com)
+ * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.spark.streaming.rabbitmq.distributed
+
+import org.apache.spark.streaming.rabbitmq.models.ExchangeAndRouting
 
 case class RabbitMQDistributedKey(
                                    queue: String,
-                                   exchangeName: Option[String] = None,
-                                   exchangeType: Option[String] = None,
-                                   routingKey: Option[String] = None
+                                   exchangeAndRouting: ExchangeAndRouting = ExchangeAndRouting(),
+                                   connectionParams: Map[String, String] = Map.empty[String, String]
                                  ) {
 
-  def asTuple = (queue, exchangeName, exchangeType, routingKey)
+  def asTuple = (queue, exchangeAndRouting.exchangeName, exchangeAndRouting.exchangeType, exchangeAndRouting.routingKeys)
 
   override def toString =
-    s"[Queue: $queue, Exchange: $exchangeName, ExchangeType: $exchangeType, RoutingKeys: ${routingKey.getOrElse("")}]"
+    s"[Queue: $queue, ${exchangeAndRouting.toStringPretty()}]"
 }

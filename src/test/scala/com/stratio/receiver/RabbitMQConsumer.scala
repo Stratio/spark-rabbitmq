@@ -37,12 +37,14 @@ object RabbitMQConsumer {
     // All the parameters are shown below, remove the ones
     // that you don't need
     val receiverStream = RabbitMQUtils.createStream(ssc, Map(
-      "host" -> "localhost",
+      "hosts" -> "localhost",
       "queueName" -> "rabbitmq-queue",
       "exchangeName" -> "rabbitmq-exchange",
-      "vHost" -> "rabbitmq-vHost",
-      "username" -> "rabbitmq-user",
-      "password" -> "rabbitmq-password",
+      "vHost" -> "/",
+      "username" -> "guest",
+      "password" -> "guest"
+    ))
+    val extraParams = Map(
       "x-max-length" -> "value",
       "x-max-length" -> "value",
       "x-message-ttl" -> "value",
@@ -51,7 +53,7 @@ object RabbitMQConsumer {
       "x-dead-letter-exchange" -> "value",
       "x-dead-letter-routing-key" -> "value",
       "x-max-priority" -> "value"
-    ))
+    )
 
     // Start up the receiver.
     receiverStream.start()

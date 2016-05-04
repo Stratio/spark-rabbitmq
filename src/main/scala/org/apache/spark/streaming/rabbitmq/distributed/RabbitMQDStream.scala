@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016 Stratio (http://stratio.com)
+ * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.apache.spark.streaming.rabbitmq.distributed
 
 import org.apache.spark.Logging
 import org.apache.spark.streaming.dstream.InputDStream
+import org.apache.spark.streaming.rabbitmq.ConfigParameters
+import org.apache.spark.streaming.rabbitmq.consumer.Consumer
 import org.apache.spark.streaming.scheduler.rate.RateEstimator
 import org.apache.spark.streaming.scheduler.{RateController, StreamInputInfo}
 import org.apache.spark.streaming.{StreamingContext, Time}
@@ -42,26 +44,32 @@ class RabbitMQDStream[R: ClassTag](
 
     estimatedRateLimit.flatMap(rateLimit => {
       if (rateLimit > 0)
-        Some((rateLimit, (context.graph.batchDuration.milliseconds.toDouble / 1000 * rateLimit).toLong))
+        Option((rateLimit, (context.graph.batchDuration.milliseconds.toDouble / 1000 * rateLimit).toLong))
       else None
     })
   }
 
   override def compute(validTime: Time): Option[RabbitMQRDD[R]] = {
-    val rdd = RabbitMQRDD[R](context.sparkContext, distributedKeys, rabbitMQParams, messageHandler)
+    val receiveTime = Consumer.getReceiveTime(rabbitMQParams) match {
+      case 0L => context.graph.batchDuration.milliseconds.toString
+      case value: Long => value.toString
+    }
+    val rddParams = rabbitMQParams ++ Map(ConfigParameters.ReceiveTime -> receiveTime)
+    val rdd = RabbitMQRDD[R](context.sparkContext, distributedKeys, rddParams, messageHandler)
 
     // Report the record number and metadata of this batch interval to InputInfoTracker.
     maxMessages().foreach(messages => {
-      val description = s"MaxRateLimit : $maxRateLimit\t: Estimated${messages._1}\t Processed: ${messages._2}"
+      val description = s"MaxRateLimit : $maxRateLimit\t: Estimated: ${messages._1}\t Processed: ${messages._2}"
       val metadata = Map(
         "DistributedKeys" -> RabbitMQDistributedKey,
+        "ReceiveTimeout" -> (System.currentTimeMillis() + receiveTime.toLong),
         StreamInputInfo.METADATA_KEY_DESCRIPTION -> description)
       val inputInfo = StreamInputInfo(id, rdd.count, metadata)
 
       ssc.scheduler.inputInfoTracker.reportInfo(validTime, inputInfo)
     })
 
-    Some(rdd)
+    Option(rdd)
   }
 
   override def start(): Unit = {}
@@ -73,7 +81,7 @@ class RabbitMQDStream[R: ClassTag](
    */
   override protected[streaming] val rateController: Option[RateController] = {
     if (RateController.isBackPressureEnabled(ssc.conf))
-      Some(new DistributedRabbitMQRateController(id, RateEstimator.create(ssc.conf, context.graph.batchDuration)))
+      Option(new DistributedRabbitMQRateController(id, RateEstimator.create(ssc.conf, context.graph.batchDuration)))
     else None
   }
 
