@@ -16,6 +16,8 @@
 package org.apache.spark.streaming.rabbitmq.consumer
 
 import java.util
+import java.util.concurrent.ConcurrentHashMap
+import scala.collection.JavaConversions._
 
 import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.rabbitmq.client.{Connection, ConnectionFactory, _}
@@ -26,7 +28,7 @@ import org.apache.spark.{Logging, SparkException}
 import scala.util.{Failure, Success, Try}
 
 private[rabbitmq]
-class Consumer(val connection: Connection, val channel: Channel, params: Map[String, String]) extends Logging {
+class Consumer(val channel: Channel, params: Map[String, String]) extends Logging {
 
   private var queueName: String = ""
 
@@ -95,8 +97,8 @@ class Consumer(val connection: Connection, val channel: Channel, params: Map[Str
     declareQueue(queueName, ExchangeAndRouting(Option(exchangeName), Option(exchangeType), Option(routingKeys)))
 
   def close(): Unit = {
-    channel.close()
-    connection.close()
+    if(channel.isOpen)
+      channel.close()
   }
 
   private def declareQueue(
@@ -106,6 +108,7 @@ class Consumer(val connection: Connection, val channel: Channel, params: Map[Str
                           ): Unit = {
 
     log.debug(s"Declaring Queue: $queue")
+
     channel.queueDeclare(
       queue,
       queueConnectionOpts.durable,
@@ -127,6 +130,7 @@ class Consumer(val connection: Connection, val channel: Channel, params: Map[Str
       exchangeAndRouting.routingKeys.foreach(routingKey =>
         routingKey.split(",").foreach(key => {
           log.debug("Binding to routing key " + key)
+
           channel.queueBind(queue, exchangeAndRouting.exchangeName.get, key)
         })
       )
@@ -139,28 +143,30 @@ class Consumer(val connection: Connection, val channel: Channel, params: Map[Str
 private[rabbitmq]
 object Consumer extends Logging with ConsumerParamsUtils {
 
-  private val factory: ConnectionFactory = new ConnectionFactory
+  private val factory = new ConnectionFactory
+  private val connections: scala.collection.concurrent.Map[String, Connection] =
+    new ConcurrentHashMap[String, Connection]()
 
   def apply: Consumer = {
-    getConnectionAndChannel(Map.empty[String, String]) match {
-      case Success((connection, channel)) =>
-        new Consumer(connection, channel, Map.empty[String, String])
+    getChannel(Map.empty[String, String]) match {
+      case Success(channel) =>
+        new Consumer(channel, Map.empty[String, String])
       case Failure(e) =>
         throw new SparkException(s"Error creating channel and connection: ${e.getLocalizedMessage}")
     }
   }
 
-  def apply(connection: Connection, channel: Channel, params: Map[String, String]): Consumer =
-    new Consumer(connection, channel, params)
+  def apply(channel: Channel, params: Map[String, String]): Consumer =
+    new Consumer(channel, params)
 
   def apply(params: Map[String, String]): Consumer = {
 
     setVirtualHost(params)
     setUserPassword(params)
 
-    getConnectionAndChannel(params) match {
-      case Success((connection, channel)) =>
-        new Consumer(connection, channel, params)
+    getChannel(params) match {
+      case Success(channel) =>
+        new Consumer(channel, params)
       case Failure(e) =>
         throw new SparkException(s"Error creating channel and connection: ${e.getLocalizedMessage}")
     }
@@ -189,19 +195,35 @@ object Consumer extends Logging with ConsumerParamsUtils {
     })
   }
 
-  private def getConnectionAndChannel(params: Map[String, String]): Try[(Connection, Channel)] = {
+  private def getChannel(params: Map[String, String]): Try[Channel] = {
     val addresses = getAddresses(params)
+    val addressesKey = addresses.mkString(",")
+    val connection = connections.getOrElse(addressesKey, addConnection(addressesKey, addresses))
 
-    log.debug("Address " + addresses.mkString(","))
-    log.debug("Creating new connection and channel")
+    log.debug("Creating new channel")
 
-    for {
-      connection <- Try(factory.newConnection(addresses))
-      channel <- Try(connection.createChannel)
-    } yield {
-      log.debug("Created new connection and channel")
-
-      (connection, channel)
-    }
+    Try(connection.createChannel)
   }
+
+  private def addConnection(key: String, addresses: Array[Address]) : Connection = {
+    val conn = factory.newConnection(addresses)
+    connections.putIfAbsent(key, conn)
+    conn
+  }
+
+  def closeConnections(): Unit =
+    connections.foreach{case (key, connection) =>
+      connection.close()
+      connections.remove(key)
+    }
+
+  /*def closeConnection(key: String): Unit =
+    connections.find{case (keySearch, connection) => key == keySearch}
+      .foreach{case (keySearch, connection) =>
+      connection.close()
+      connections.remove(key)
+    }
+
+  def closeConnection(params: Map[String, String]): Unit = closeConnection(getAddresses(params).mkString(","))
+*/
 }

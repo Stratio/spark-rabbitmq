@@ -16,6 +16,7 @@
 package org.apache.spark.streaming.rabbitmq.consumer
 
 import com.rabbitmq.client.Address
+import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.rabbitmq.ConfigParameters._
 import org.apache.spark.streaming.rabbitmq.distributed.RabbitMQDistributedKey
 import org.apache.spark.streaming.rabbitmq.models.{ExchangeAndRouting, QueueConnectionOpts}
@@ -25,9 +26,35 @@ import scala.util.Try
 private[rabbitmq]
 trait ConsumerParamsUtils {
 
-  def getReceiveTime(params: Map[String, String]): Long =
-    Try(params.getOrElse(ReceiveTime, DefaultReceiveTime.toString).toLong)
-      .getOrElse(DefaultReceiveTime)
+  /**
+   * Grouped params by functionality
+   */
+
+  def getConnectionParams(params: Map[String, String]): Map[String, String] =
+    params.filterKeys(key => ConnectionKeys.contains(key))
+
+  def getConnectionTopologyParams(params: Map[String, String]): Map[String, String] =
+    params.filterKeys(key => ConnectionTopologyKeys.contains(key))
+
+  def getQueueConnectionPropertiesParams(params: Map[String, String]): Map[String, String] =
+    params.filterKeys(key => QueueConnectionPropertiesKeys.contains(key))
+
+  def getSparkConsumerPropertiesParams(params: Map[String, String]): Map[String, String] =
+    params.filterKeys(key => SparkConsumerPropertiesKeys.contains(key))
+
+  /**
+   * Connection params
+   */
+
+  def getHosts(params: Map[String, String]): String = {
+    params.getOrElse(HostsKey, DefaultHost)
+  }
+
+  def getAddresses(params: Map[String, String]): Array[Address] = {
+    val hosts = getHosts(params)
+
+    Address.parseAddresses(hosts)
+  }
 
   def getExchangesDistributed(params: Map[String, String]): Seq[RabbitMQDistributedKey] = {
     val queueName = params.get(QueueNameKey)
@@ -39,6 +66,29 @@ trait ConsumerParamsUtils {
       Seq(RabbitMQDistributedKey(queue, exchangeAndRouting, connectionParams))
     }
     }
+  }
+
+  def getExchangeAndRoutingParams(params: Map[String, String]): ExchangeAndRouting = {
+    val routingKeys = params.get(RoutingKeysKey)
+    val exchangeName = params.get(ExchangeNameKey)
+    val exchangeType = params.get(ExchangeTypeKey)
+
+    ExchangeAndRouting(exchangeName, exchangeType, routingKeys)
+  }
+
+  /**
+   * Queue Properties
+   */
+
+  def getQueueConnectionParams(params: Map[String, String]): QueueConnectionOpts = {
+    val durable = Try(params.getOrElse(DurableKey, DefaultDurable.toString).toBoolean)
+      .getOrElse(DefaultDurable)
+    val exclusive = Try(params.getOrElse(ExclusiveKey, DefaultExclusive.toString).toBoolean)
+      .getOrElse(DefaultExclusive)
+    val autoDelete = Try(params.getOrElse(AutoDeleteKey, DefaultAutoDelete.toString).toBoolean)
+      .getOrElse(DefaultAutoDelete)
+
+    QueueConnectionOpts(durable, exclusive, autoDelete)
   }
 
   def getAutoAckFromParams(params: Map[String, String]): Boolean = {
@@ -54,45 +104,28 @@ trait ConsumerParamsUtils {
   def sendingBasicAckFromParams(params: Map[String, String]): Boolean =
     getAckFromParams(params) == BasicAckType
 
-  def getExchangeAndRoutingParams(params: Map[String, String]): ExchangeAndRouting = {
-    val routingKeys = params.get(RoutingKeysKey)
-    val exchangeName = params.get(ExchangeNameKey)
-    val exchangeType = params.get(ExchangeTypeKey)
+  /**
+   * Spark properties
+   */
 
-    ExchangeAndRouting(exchangeName, exchangeType, routingKeys)
-  }
-
-  def getConnectionParams(params: Map[String, String]): Map[String, String] =
-    params.filterKeys(key => ConnectionKeys.contains(key))
-
-  def getHosts(params: Map[String, String]): String = {
-    params.getOrElse(HostsKey, "localhost")
-  }
+  def getMaxReceiveTime(params: Map[String, String]): Long =
+    Try(params.getOrElse(MaxReceiveTime, DefaultMaxReceiveTime.toString).toLong)
+      .getOrElse(DefaultMaxReceiveTime)
 
   def getParallelism(params: Map[String, String]): Int = {
     Try(params.getOrElse(LevelParallelism, DefaultLevelParallelism.toString).toInt)
       .getOrElse(DefaultLevelParallelism)
   }
 
-  def getMaxMessagesPerPartition(params: Map[String, String]): Int = {
-    Try(params.getOrElse(MaxMessagesPerPartition, DefaultMaxMessagesPerPartition.toString).toInt)
-      .getOrElse(DefaultMaxMessagesPerPartition)
+  def getRememberDuration(params: Map[String, String]): Option[Long] = {
+    Try(params.get(RememberDuration).map(_.toLong)).getOrElse(None)
   }
 
-  def getQueueConnectionParams(params: Map[String, String]): QueueConnectionOpts = {
-    val durable = Try(params.getOrElse(DurableKey, DefaultDurable.toString).toBoolean)
-      .getOrElse(DefaultDurable)
-    val exclusive = Try(params.getOrElse(ExclusiveKey, DefaultExclusive.toString).toBoolean)
-      .getOrElse(DefaultExclusive)
-    val autoDelete = Try(params.getOrElse(AutoDeleteKey, DefaultAutoDelete.toString).toBoolean)
-      .getOrElse(DefaultAutoDelete)
-
-    QueueConnectionOpts(durable, exclusive, autoDelete)
+  def getStorageLevel(params: Map[String, String]): StorageLevel = {
+    StorageLevel.fromString(Try(params.getOrElse(StorageLevelKey, DefaultStorageLevel))
+      .getOrElse(DefaultStorageLevel))
   }
 
-  def getAddresses(params: Map[String, String]): Array[Address] = {
-    val hosts = getHosts(params)
-
-    Address.parseAddresses(hosts)
-  }
+  def getMaxMessagesPerPartition(params: Map[String, String]): Option[Int] =
+    params.get(MaxMessagesPerPartition).map(max => max.toInt)
 }

@@ -44,6 +44,7 @@ object RabbitMQConsumer {
       "username" -> "guest",
       "password" -> "guest"
     ))
+
     val extraParams = Map(
       "x-max-length" -> "value",
       "x-max-length" -> "value",
@@ -55,14 +56,19 @@ object RabbitMQConsumer {
       "x-max-priority" -> "value"
     )
 
+    val totalEvents = ssc.sparkContext.accumulator(0L, "My Accumulator")
+
     // Start up the receiver.
     receiverStream.start()
 
     // Fires each time the configured window has passed.
     receiverStream.foreachRDD(r => {
-      if (r.count() > 0) {
+      val count = r.count()
+      if (count > 0) {
         // Do something with this message
-        println(r)
+        println(s"EVENTS COUNT : \t $count")
+        totalEvents += count
+        println(s"TOTAL EVENTS : \t $totalEvents")
       }
       else {
         println("No new messages...")

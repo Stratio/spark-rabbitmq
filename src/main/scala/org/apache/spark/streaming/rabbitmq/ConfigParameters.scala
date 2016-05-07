@@ -53,19 +53,24 @@ object ConfigParameters {
   val DefaultAutoDelete = false
   val DefaultAckType = "auto" //auto, basic, none
   val BasicAckType = "basic"
+  val DefaultHost = "localhost"
 
   /**
    * Spark Consumer properties
    */
   val MaxMessagesPerPartition = "maxMessagesPerPartition"
   val LevelParallelism = "levelParallelism"
-  val ReceiveTime = "receiveTime"
-  val SparkConsumerPropertiesKeys = List(MaxMessagesPerPartition, LevelParallelism, ReceiveTime)
+  val MaxReceiveTime = "maxReceiveTime"
+  val RememberDuration = "rememberDuration"
+  val StorageLevelKey = "storageLevel"
+  val SparkConsumerPropertiesKeys =
+    List(MaxMessagesPerPartition, LevelParallelism, MaxReceiveTime, StorageLevelKey, RememberDuration)
 
   /**
    * Configuration Defaults
    */
   val DefaultLevelParallelism = 1
   val DefaultMaxMessagesPerPartition = 1000
-  val DefaultReceiveTime = 0L //when setting 0 is the same as the streaming window
+  val DefaultStorageLevel = "MEMORY_ONLY"
+  val DefaultMaxReceiveTime = 0L //when setting 0 is the same as the streaming window
 }
