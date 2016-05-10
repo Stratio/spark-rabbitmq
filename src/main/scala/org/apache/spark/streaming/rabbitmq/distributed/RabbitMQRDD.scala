@@ -41,7 +41,7 @@ class RabbitMQRDD[R: ClassTag](
   @volatile private var totalCalculated: Option[Long] = None
 
   /**
-   * Return the number of elements in the RDD. Optimized when is the second place
+   * Return the number of elements in the RDD. Optimized when is called the second place
    */
   override def count(): Long = {
     totalCalculated.getOrElse {
@@ -90,11 +90,18 @@ class RabbitMQRDD[R: ClassTag](
     }
   }
 
+  /**
+   * The number of partitions are calculated in base of the selected parallelism multiplied by the number of RabbitMQ
+   * connections selected by the user when create the DStream, if the sequence of distributed keys is empty, it is
+   * multiplied by the distributedKey calculate in base of the params.
+   *
+   * @return the number of Partitions calculated for this RDD
+   */
   override def getPartitions: Array[Partition] = {
     val parallelism = Consumer.getParallelism(rabbitMQParams)
     val keys = if (distributedKeys.nonEmpty)
       distributedKeys
-    else Consumer.getExchangesDistributed(rabbitMQParams)
+    else Consumer.getDistributedKeysParams(rabbitMQParams)
 
     keys.zipWithIndex.flatMap { case (key, index) =>
       (0 until parallelism).map(indexParallelism => {
@@ -109,6 +116,12 @@ class RabbitMQRDD[R: ClassTag](
     }.toArray
   }
 
+  /**
+   * The Preferred locations are calculate in base of the hosts when the partition was created
+   *
+   * @param thePart Partition to calculate the locations
+   * @return The sequence of locations
+   */
   override def getPreferredLocations(thePart: Partition): Seq[String] = {
     val part = thePart.asInstanceOf[RabbitMQPartition]
 
@@ -134,10 +147,17 @@ class RabbitMQRDD[R: ClassTag](
       }
     })
 
+    //Parameters of the RDD are merged with the parameters for this partition
     val rabbitParams = rabbitMQParams ++ part.connectionParams
+    //Get or create one consumer, create one new channel if this consumer use one connection that was created
+    // previously is reused
     val consumer = getConsumer(part, rabbitParams)
     val queueConsumer = consumer.startConsumer
+    //Counter to control the number of messages consumed by this partition
     @volatile var numMessages = 0
+
+    //The actorSystem and the receiveTime are used to limit the number of milliseconds that the partition is
+    // receiving data from RabbitMQ
     val system = RabbitMQRDD.getActorSystem
     val receiveTime = Consumer.getMaxReceiveTime(rabbitParams)
     val maxMessagesPerPartition = Consumer.getMaxMessagesPerPartition(rabbitParams)
@@ -156,13 +176,15 @@ class RabbitMQRDD[R: ClassTag](
           finishProcess()
         } else {
           Try {
-            val delivery = queueConsumer.nextDelivery()
+              val delivery = queueConsumer.nextDelivery()
 
-            (delivery, messageHandler(delivery.getBody))
+              (delivery, messageHandler(delivery.getBody))
           } match {
             case Success((delivery, data)) =>
+              //Send ack if not set the auto ack property
               if (Consumer.sendingBasicAckFromParams(rabbitParams))
                 consumer.sendBasicAck(delivery)
+              //Increment the number of messages consumed correctly
               numMessages += 1
               data
             case Failure(e: ConsumerCancelledException) =>
@@ -179,8 +201,11 @@ class RabbitMQRDD[R: ClassTag](
     }
 
     override def close(): Unit = {
+      //Increment the accumulator to control in the driver the number of messages consumed by all executors, this is
+      // used to report in the Spark UI this number for the next iteration
       countAccumulator += numMessages
       log.info(s"******* Received $numMessages messages by Partition : ${part.index}  before close Channel ******")
+      //Close the scheduler and the channel in the consumer
       scheduleProcess.cancel()
       consumer.close()
     }
@@ -199,6 +224,8 @@ class RabbitMQRDD[R: ClassTag](
         part.exchangeAndRouting.routingKeys,
         consumerParams
       )
+      //If the number of consumers in the same queue are more than one, the Fair Dispatch should be 1, in other case
+      // the user can lose events
       if (part.withFairDispatch)
         consumer.setFairDispatchQoS()
 

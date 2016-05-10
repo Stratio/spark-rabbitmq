@@ -26,10 +26,10 @@ import scala.util.Try
 private[rabbitmq]
 trait ConsumerParamsUtils {
 
+
   /**
    * Grouped params by functionality
    */
-
   def getConnectionParams(params: Map[String, String]): Map[String, String] =
     params.filterKeys(key => ConnectionKeys.contains(key))
 
@@ -42,10 +42,10 @@ trait ConsumerParamsUtils {
   def getSparkConsumerPropertiesParams(params: Map[String, String]): Map[String, String] =
     params.filterKeys(key => SparkConsumerPropertiesKeys.contains(key))
 
+
   /**
    * Connection params
    */
-
   def getHosts(params: Map[String, String]): String = {
     params.getOrElse(HostsKey, DefaultHost)
   }
@@ -56,7 +56,7 @@ trait ConsumerParamsUtils {
     Address.parseAddresses(hosts)
   }
 
-  def getExchangesDistributed(params: Map[String, String]): Seq[RabbitMQDistributedKey] = {
+  def getDistributedKeysParams(params: Map[String, String]): Seq[RabbitMQDistributedKey] = {
     val queueName = params.get(QueueNameKey)
     val connectionParams = getConnectionParams(params)
 
@@ -76,10 +76,10 @@ trait ConsumerParamsUtils {
     ExchangeAndRouting(exchangeName, exchangeType, routingKeys)
   }
 
+
   /**
    * Queue Properties
    */
-
   def getQueueConnectionParams(params: Map[String, String]): QueueConnectionOpts = {
     val durable = Try(params.getOrElse(DurableKey, DefaultDurable.toString).toBoolean)
       .getOrElse(DefaultDurable)
@@ -93,7 +93,7 @@ trait ConsumerParamsUtils {
 
   def getAutoAckFromParams(params: Map[String, String]): Boolean = {
     params.getOrElse(AckTypeKey, DefaultAckType) match {
-      case DefaultAckType => true
+      case AutoAckType => true
       case _ => false
     }
   }
@@ -104,10 +104,10 @@ trait ConsumerParamsUtils {
   def sendingBasicAckFromParams(params: Map[String, String]): Boolean =
     getAckFromParams(params) == BasicAckType
 
+
   /**
    * Spark properties
    */
-
   def getMaxReceiveTime(params: Map[String, String]): Long =
     Try(params.getOrElse(MaxReceiveTime, DefaultMaxReceiveTime.toString).toLong)
       .getOrElse(DefaultMaxReceiveTime)

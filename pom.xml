@@ -28,7 +28,7 @@
 
     <groupId>com.stratio.receiver</groupId>
     <artifactId>spark-rabbitmq</artifactId>
-    <version>0.3.0-SNAPSHOT</version>
+    <version>0.4.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -52,41 +52,9 @@
 
     <developers>
         <developer>
-            <id>ajnavarro</id>
-            <name>Antonio Jesus Navarro</name>
-            <email>ajnavarro@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
-            <id>gmunoz</id>
-            <name>Gaspar Muñoz</name>
-            <email>gmunoz@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
-            <id>smola</id>
-            <name>Santiago M. Mola</name>
-            <email>smola@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
             <id>jcgarcia</id>
             <name>Jose Carlos Garcia</name>
             <email>jcgarcia@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
-            <id>anistal</id>
-            <name>Alvaro Nistal Cañal</name>
-            <email>anistal@stratio.com</email>
             <roles>
                 <role>developer</role>
             </roles>
@@ -103,22 +71,6 @@
             <id>dcarroza</id>
             <name>Daniel Carroza Santana</name>
             <email>dcarroza@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
-            <id>arincon</id>
-            <name>Abel Rincon</name>
-            <email>arincon@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
-            <id>sgomezg</id>
-            <name>Sergio Gómez</name>
-            <email>sgomez@stratio.com</email>
             <roles>
                 <role>developer</role>
             </roles>

@@ -13,62 +13,69 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.receiver
+package org.apache.spark.streaming.rabbitmq
 
 import org.apache.spark.SparkConf
+import org.apache.spark.sql.SQLContext
 import org.apache.spark.streaming.rabbitmq.RabbitMQUtils
-import org.apache.spark.streaming.rabbitmq.distributed.RabbitMQDistributedKey
-import org.apache.spark.streaming.rabbitmq.models.ExchangeAndRouting
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
-object RabbitMQDistributedConsumer {
-
+object RabbitMQConsumer {
   def main(args: Array[String]) {
     // Setup the Streaming context
     val conf = new SparkConf()
       .setAppName("rabbitmq-receiver-example")
-      .setIfMissing("spark.master", "local[1]")
+      .setIfMissing("spark.master", "local[*]")
     val ssc = new StreamingContext(conf, Seconds(10))
 
-    val rabbitMQParams = Map(
+    // Setup the SQL context
+    val sqlContext = new SQLContext(ssc.sparkContext)
+
+    // Setup the receiver stream to connect to RabbitMQ.
+    // Check the RabbitMQInputDStream class to see the full list of
+    // options, along with the default values.
+    // All the parameters are shown below, remove the ones
+    // that you don't need
+    val receiverStream = RabbitMQUtils.createStream(ssc, Map(
       "hosts" -> "localhost",
       "queueName" -> "rabbitmq-queue",
       "exchangeName" -> "rabbitmq-exchange",
       "vHost" -> "/",
       "username" -> "guest",
-      "password" -> "guest",
-      //"maxMessagesPerPartition" -> "1000",
-      "levelParallelism" -> "1",
-      //"ackType" -> "basic",
-      "maxReceiveTime" -> "9000"
-    )
-    val distributedKey = Seq(RabbitMQDistributedKey(
-      "rabbitmq-queue",
-      new ExchangeAndRouting("rabbitmq-exchange", "rabbitmq-queue"),
-      rabbitMQParams
+      "password" -> "guest"
     ))
-    val distributedStream = RabbitMQUtils.createDistributedStream[String](ssc, distributedKey, rabbitMQParams)
+
+    val extraParams = Map(
+      "x-max-length" -> "value",
+      "x-max-length" -> "value",
+      "x-message-ttl" -> "value",
+      "x-expires" -> "value",
+      "x-max-length-bytes" -> "value",
+      "x-dead-letter-exchange" -> "value",
+      "x-dead-letter-routing-key" -> "value",
+      "x-max-priority" -> "value"
+    )
 
     val totalEvents = ssc.sparkContext.accumulator(0L, "My Accumulator")
 
     // Start up the receiver.
-    distributedStream.start()
+    receiverStream.start()
 
     // Fires each time the configured window has passed.
-    distributedStream.foreachRDD(rdd => {
-      if (!rdd.isEmpty()) {
-        val count = rdd.count()
-        val count2 = rdd.count()
+    receiverStream.foreachRDD(r => {
+      val count = r.count()
+      if (count > 0) {
         // Do something with this message
         println(s"EVENTS COUNT : \t $count")
-        println(s"EVENTS COUNT2 : \t $count2")
         totalEvents += count
-      } else println("RDD is empty")
-      println(s"TOTAL EVENTS : \t $totalEvents")
+        println(s"TOTAL EVENTS : \t $totalEvents")
+      }
+      else {
+        println("No new messages...")
+      }
     })
 
     ssc.start() // Start the computation
     ssc.awaitTermination() // Wait for the computation to terminate
   }
 }
-

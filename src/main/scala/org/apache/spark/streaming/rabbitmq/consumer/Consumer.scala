@@ -27,11 +27,22 @@ import org.apache.spark.{Logging, SparkException}
 
 import scala.util.{Failure, Success, Try}
 
+/**
+ * With this class you can obtain one queue to consume messages from RabbitMQ
+ *
+ * @param channel The RabbitMQ channel created for consume messages
+ * @param params The parameters that should contains the queue options and the consume options
+ */
 private[rabbitmq]
 class Consumer(val channel: Channel, params: Map[String, String]) extends Logging {
 
   private var queueName: String = ""
 
+  /**
+   * Start one consumer in base of the params of the class
+   *
+   * @return The queue consumer that can be used to consume messages by the caller
+   */
   def startConsumer: QueueingConsumer = {
 
     assert(queueName.nonEmpty && queueName != "", "The queueName is empty")
@@ -45,10 +56,24 @@ class Consumer(val channel: Channel, params: Map[String, String]) extends Loggin
     queueConsumer
   }
 
+  /**
+   * Send one basic ack, this ack correspond with the delivery param
+   * @param delivery The previous delivery that the queueConsumer send with one message consumed
+   */
   def sendBasicAck(delivery: Delivery): Unit =
     channel.basicAck(delivery.getEnvelope.getDeliveryTag,false)
 
+  /**
+   * Set the number of messages to one when the FairDispatch is called, this is necessary when we want more than one
+   * consumer in the same queue
+   */
   def setFairDispatchQoS(): Unit = channel.basicQos(1)
+
+
+  /**
+   * Functions to call the private method declare queue, this make one connection to one queue in base of all the
+   * params: queue name, exchange name and routing key
+   */
 
   def setQueue(): Unit = setQueue(params)
 
@@ -143,9 +168,17 @@ class Consumer(val channel: Channel, params: Map[String, String]) extends Loggin
 private[rabbitmq]
 object Consumer extends Logging with ConsumerParamsUtils {
 
+  /**
+   * Is recommended to use the same factory and the same connection in multithreading
+   */
   private val factory = new ConnectionFactory
   private val connections: scala.collection.concurrent.Map[String, Connection] =
     new ConcurrentHashMap[String, Connection]()
+
+
+  /**
+   * Methods to create one Consumer, without user parameters, with parameters and with channel and parameters
+   */
 
   def apply: Consumer = {
     getChannel(Map.empty[String, String]) match {
@@ -171,6 +204,15 @@ object Consumer extends Logging with ConsumerParamsUtils {
         throw new SparkException(s"Error creating channel and connection: ${e.getLocalizedMessage}")
     }
   }
+
+  /**
+   * Close all connections in this singleton
+   */
+  def closeConnections(): Unit =
+    connections.foreach{case (key, connection) =>
+      connection.close()
+      connections.remove(key)
+    }
 
   private def setVirtualHost(params: Map[String, String]): Unit = {
     val vHost = params.get(VirtualHostKey)
@@ -210,20 +252,4 @@ object Consumer extends Logging with ConsumerParamsUtils {
     connections.putIfAbsent(key, conn)
     conn
   }
-
-  def closeConnections(): Unit =
-    connections.foreach{case (key, connection) =>
-      connection.close()
-      connections.remove(key)
-    }
-
-  /*def closeConnection(key: String): Unit =
-    connections.find{case (keySearch, connection) => key == keySearch}
-      .foreach{case (keySearch, connection) =>
-      connection.close()
-      connections.remove(key)
-    }
-
-  def closeConnection(params: Map[String, String]): Unit = closeConnection(getAddresses(params).mkString(","))
-*/
 }

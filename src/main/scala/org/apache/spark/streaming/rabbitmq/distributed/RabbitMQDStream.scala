@@ -23,6 +23,7 @@ import org.apache.spark.streaming.scheduler.rate.RateEstimator
 import org.apache.spark.streaming.scheduler.{RateController, StreamInputInfo}
 import org.apache.spark.streaming.{Seconds, StreamingContext, Time}
 import org.apache.spark.{Accumulator, Logging}
+import RabbitMQDStream._
 
 import scala.reflect.ClassTag
 
@@ -33,8 +34,6 @@ class RabbitMQDStream[R: ClassTag](
                                     val rabbitMQParams: Map[String, String],
                                     messageHandler: Array[Byte] => R
                                   ) extends InputDStream[R](_ssc) with Logging {
-
-  override val id = ssc.getNewInputStreamId() + System.currentTimeMillis().toInt
 
   private[streaming] override def name: String = s"RabbitMQ direct stream [$id]"
 
@@ -49,12 +48,12 @@ class RabbitMQDStream[R: ClassTag](
   userRememberDuration.foreach(duration => rememberDuration = Seconds(duration))
 
   /**
-   * Min storage level is memory, because compute function for one rdd is called more than one place
+   * Min storage level is MEMORY_ONLY, because compute function for one rdd is called more than one place
    */
   private[streaming] def calculateStorageLevel(): StorageLevel = {
     val levelFromParams = Consumer.getStorageLevel(rabbitMQParams)
     if (levelFromParams == StorageLevel.NONE) {
-      log.info("NONE is not a valid storage level for this receiver distributed, setting it in MEMORY_ONLY")
+      log.warn("NONE is not a valid storage level for this receiver distributed, setting it in MEMORY_ONLY")
       StorageLevel.MEMORY_ONLY
     } else levelFromParams
   }
@@ -78,12 +77,17 @@ class RabbitMQDStream[R: ClassTag](
     })
   }
 
+  /**
+   *
+   * @return max number of messages that the input RDD must receive in the next window based on the parallelism
+   *         multiplied with the number of distributed keys or the number of exchanges
+   */
   private[streaming] def getMaxMessagesBasedOnPartitions: Long = {
     if (maxMessagesPerPartition.isDefined) {
       val parallelism = Consumer.getParallelism(rabbitMQParams)
       val keys = if (distributedKeys.nonEmpty)
         distributedKeys
-      else Consumer.getExchangesDistributed(rabbitMQParams)
+      else Consumer.getDistributedKeysParams(rabbitMQParams)
       val numPartitions = keys.size * parallelism
 
       numPartitions * maxMessagesPerPartition.get
@@ -114,19 +118,14 @@ class RabbitMQDStream[R: ClassTag](
       }
     val countAccumulator = ssc.sparkContext.accumulator(0L, id.toString)
     val rdd = RabbitMQRDD[R](context.sparkContext, distributedKeys, rddParams, countAccumulator, messageHandler)
-    val inputInfo = StreamInputInfo(
-      RabbitMQDStream.idDstream,
-      RabbitMQDStream.countTotalDStream.fold(0L) { acc => acc.value },
-      RabbitMQDStream.metadataDStream
-    )
 
     //publish data in Spark UI
-    ssc.scheduler.inputInfoTracker.reportInfo(validTime, inputInfo)
-
+    countTotalDStream.foreach(countTotal =>
+      ssc.scheduler.inputInfoTracker.reportInfo(validTime, StreamInputInfo(id, countTotal.value, metadataDStream))
+    )
     //Update next values to publish in spark streaming UI
-    RabbitMQDStream.countTotalDStream = Option(countAccumulator)
-    RabbitMQDStream.metadataDStream = metadata
-    RabbitMQDStream.idDstream = id
+    countTotalDStream = Option(countAccumulator)
+    metadataDStream = metadata
 
     Option(rdd)
   }
@@ -163,6 +162,5 @@ private[streaming] object RabbitMQDStream {
    */
   @volatile var countTotalDStream: Option[Accumulator[Long]] = None
   @volatile var metadataDStream: Map[String, Any] = Map.empty[String, Any]
-  @volatile var idDstream: Int = 0
 }
 

@@ -51,8 +51,9 @@ object ConfigParameters {
   val DefaultDurable = true
   val DefaultExclusive = false
   val DefaultAutoDelete = false
-  val DefaultAckType = "auto" //auto, basic, none
+  val DefaultAckType = "basic"
   val BasicAckType = "basic"
+  val AutoAckType = "auto"
   val DefaultHost = "localhost"
 
   /**

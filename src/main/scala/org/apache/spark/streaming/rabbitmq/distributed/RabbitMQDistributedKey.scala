@@ -23,8 +23,6 @@ case class RabbitMQDistributedKey(
                                    connectionParams: Map[String, String] = Map.empty[String, String]
                                  ) {
 
-  def asTuple = (queue, exchangeAndRouting.exchangeName, exchangeAndRouting.exchangeType, exchangeAndRouting.routingKeys)
-
   override def toString =
     s"[Queue: $queue, ${exchangeAndRouting.toStringPretty()}]"
 }

@@ -51,6 +51,21 @@ object RabbitMQUtils {
     createStream(jssc.ssc, params.asScala.toMap)
   }
 
+  /**
+   *
+   * Create an input stream that receives messages from a RabbitMQ queue in distributed mode, each executor can
+   * consume messages from a different cluster or queue-exchange. Is possible to parallelize the consumer in one
+   * executor creating more channels, this is transparent to the user.
+   * The result DStream is mapped to the type R with the function messageHandler.
+   *
+   * @param ssc StreamingContext object
+   * @param distributedKeys Object that can contains the connections to the queues, it can be more than one and each
+   *                        tuple of queue, exchange, routing key and hosts can be one RabbitMQ independent
+   * @param rabbitMQParams RabbitMQ params with queue options, spark options and consumer options
+   * @param messageHandler Function to convert he raw type of the rabbitMQ messages to the type R
+   * @tparam R Type or Class that the output DStream should contains for each message consumed
+   * @return The new DStream with the messages consumed and parsed to the R type
+   */
   def createDistributedStream[R: ClassTag](ssc: StreamingContext,
                                            distributedKeys: Seq[RabbitMQDistributedKey],
                                            rabbitMQParams: Map[String, String],
@@ -61,6 +76,18 @@ object RabbitMQUtils {
     new RabbitMQDStream[R](ssc, distributedKeys, rabbitMQParams, cleanedHandler)
   }
 
+  /**
+   * Create an input stream that receives messages from a RabbitMQ queue in distributed mode, each executor can
+   * consume messages from a different cluster or queue-exchange. Is possible to parallelize the consumer in one
+   * executor creating more channels, this is transparent to the user.
+   * The result DStream is mapped to Array[Byte] type.
+   *
+   * @param ssc StreamingContext object
+   * @param distributedKeys Object that can contains the connections to the queues, it can be more than one and each
+   *                        tuple of queue, exchange, routing key and hosts can be one RabbitMQ independent
+   * @param rabbitMQParams RabbitMQ params with queue options, spark options and consumer options
+   * @return The new DStream with the messages consumed and parsed to the Raw type (Array[Byte])
+   */
   def createDistributedStream(
                                ssc: StreamingContext,
                                distributedKeys: Seq[RabbitMQDistributedKey],
@@ -71,6 +98,20 @@ object RabbitMQUtils {
     new RabbitMQDStream[Array[Byte]](ssc, distributedKeys, rabbitMQParams, messageHandler)
   }
 
+  /**
+   *
+   * Create an input stream that receives messages from a RabbitMQ queue in distributed mode, each executor can
+   * consume messages from a different cluster or queue-exchange. Is possible to parallelize the consumer in one
+   * executor creating more channels, this is transparent to the user.
+   * The result DStream is mapped to String type
+   *
+   * @param ssc StreamingContext object
+   * @param distributedKeys Object that can contains the connections to the queues, it can be more than one and each
+   *                        tuple of queue, exchange, routing key and hosts can be one RabbitMQ independent
+   * @param rabbitMQParams RabbitMQ params with queue options, spark options and consumer options
+   * @tparam R Type or Class that the output DStream should contains for each message consumed
+   * @return The new DStream with the messages consumed and parsed to the String type
+   */
   def createDistributedStream[R >: String <: String : Manifest](
                                                                  ssc: StreamingContext,
                                                                  distributedKeys: Seq[RabbitMQDistributedKey],
@@ -81,6 +122,22 @@ object RabbitMQUtils {
     new RabbitMQDStream[String](ssc, distributedKeys, rabbitMQParams, messageHandler)
   }
 
+  /**
+   *
+   * Create an input stream that receives messages from a RabbitMQ queue in distributed mode, each executor can
+   * consume messages from a different cluster or queue-exchange. Is possible to parallelize the consumer in one
+   * executor creating more channels, this is transparent to the user.
+   * The result DStream is mapped to the type R with the function messageHandler.
+   *
+   * @param javaStreamingContext JavaStreamingContext object
+   * @param recordClass Class type for R
+   * @param distributedKeys Object that can contains the connections to the queues, it can be more than one and each
+   *                        tuple of queue, exchange, routing key and hosts can be one RabbitMQ independent
+   * @param rabbitMQParams RabbitMQ params with queue options, spark options and consumer options
+   * @param messageHandler Function to convert he raw type of the rabbitMQ messages to the type R
+   * @tparam R Type or Class that the output DStream should contains for each message consumed
+   * @return The new DStream with the messages consumed and parsed to the R type
+   */
   def createDistributedStream[R](
                                   javaStreamingContext: JavaStreamingContext,
                                   recordClass: Class[R],
