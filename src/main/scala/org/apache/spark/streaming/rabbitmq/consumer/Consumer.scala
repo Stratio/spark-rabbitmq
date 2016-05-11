@@ -67,8 +67,7 @@ class Consumer(val channel: Channel, params: Map[String, String]) extends Loggin
    * Set the number of messages to one when the FairDispatch is called, this is necessary when we want more than one
    * consumer in the same queue
    */
-  def setFairDispatchQoS(): Unit = channel.basicQos(1)
-
+  def setFairDispatchQoS(prefetchCount: Int): Unit = channel.basicQos(prefetchCount)
 
   /**
    * Functions to call the private method declare queue, this make one connection to one queue in base of all the
@@ -96,20 +95,20 @@ class Consumer(val channel: Channel, params: Map[String, String]) extends Loggin
     val exchangeAndRouting = ExchangeAndRouting(exchangeName, exchangeType, routingKeys)
     val queueConnectionOpts = Consumer.getQueueConnectionParams(params)
 
-    declareQueue(queueName, exchangeAndRouting, queueConnectionOpts)
+    declareQueue(queueName, exchangeAndRouting, queueConnectionOpts, Consumer.getMessageConsumerParams(usrParams))
   }
 
   def setQueue(queueName: String, exchangeAndRouting: ExchangeAndRouting, usrParams: Map[String, String]): Unit = {
     val queueConnectionOpts = Consumer.getQueueConnectionParams(params)
 
-    declareQueue(queueName, exchangeAndRouting, queueConnectionOpts)
+    declareQueue(queueName, exchangeAndRouting, queueConnectionOpts, Consumer.getMessageConsumerParams(usrParams))
   }
 
   def setQueue(queueName: String, usrParams: Map[String, String]): Unit = {
     val exchangeAndRouting = Consumer.getExchangeAndRoutingParams(params)
     val queueConnectionOpts = Consumer.getQueueConnectionParams(params)
 
-    declareQueue(queueName, exchangeAndRouting, queueConnectionOpts)
+    declareQueue(queueName, exchangeAndRouting, queueConnectionOpts, Consumer.getMessageConsumerParams(usrParams))
   }
 
   def setQueue(queueName: String): Unit =
@@ -129,7 +128,8 @@ class Consumer(val channel: Channel, params: Map[String, String]) extends Loggin
   private def declareQueue(
                             queue: String,
                             exchangeAndRouting: ExchangeAndRouting = ExchangeAndRouting(),
-                            queueConnectionOpts: QueueConnectionOpts = QueueConnectionOpts()
+                            queueConnectionOpts: QueueConnectionOpts = QueueConnectionOpts(),
+                            queueParams: Map[String, AnyRef] = Map.empty[String, AnyRef]
                           ): Unit = {
 
     log.debug(s"Declaring Queue: $queue")
@@ -139,7 +139,7 @@ class Consumer(val channel: Channel, params: Map[String, String]) extends Loggin
       queueConnectionOpts.durable,
       queueConnectionOpts.exclusive,
       queueConnectionOpts.autoDelete,
-      new util.HashMap(0)
+      queueParams
     )
 
     if (exchangeAndRouting.exchangeName.isDefined && exchangeAndRouting.exchangeType.isDefined) {

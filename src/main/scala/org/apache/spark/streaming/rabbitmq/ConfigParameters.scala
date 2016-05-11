@@ -42,19 +42,36 @@ object ConfigParameters {
   val ExclusiveKey = "exclusive"
   val AutoDeleteKey = "autoDelete"
   val AckTypeKey = "ackType"
-  val QueueConnectionPropertiesKeys = List(DurableKey, ExclusiveKey, AutoDeleteKey, AckTypeKey)
+  val FairDispatchKey = "fairDispatch"
+  val PrefetchCount = "prefetchCount"
+  val QueueConnectionPropertiesKeys =
+    List(DurableKey, ExclusiveKey, AutoDeleteKey, AckTypeKey, FairDispatchKey, PrefetchCount)
 
   /**
    * Queue Connection Defaults
    */
-
   val DefaultDurable = true
   val DefaultExclusive = false
   val DefaultAutoDelete = false
+  val DefaultFairDispatch = false
   val DefaultAckType = "basic"
   val BasicAckType = "basic"
   val AutoAckType = "auto"
   val DefaultHost = "localhost"
+  val DefaultPrefetchCount = 1
+
+  /**
+   * Message Consumed properties
+   */
+  private val XmaxLength = "x-max-length"
+  private val XmessageTtl = "x-message-ttl"
+  private val Xexpires = "x-expires"
+  private val XmaxLengthBytes = "x-max-length-bytes"
+  private val XDeadLetterExchange = "x-dead-letter-exchange"
+  private val XdeadLetterRoutingKey = "x-dead-letter-routing-key"
+  private val XmaxPriority = "x-max-priority"
+  val MessageConsumerPropertiesKeys =
+    List(XmaxLength, XmessageTtl, Xexpires, XmaxLengthBytes, XDeadLetterExchange, XdeadLetterRoutingKey, XmaxPriority)
 
   /**
    * Spark Consumer properties
@@ -74,4 +91,6 @@ object ConfigParameters {
   val DefaultMaxMessagesPerPartition = 1000
   val DefaultStorageLevel = "MEMORY_ONLY"
   val DefaultMaxReceiveTime = 0L //when setting 0 is the same as the streaming window
+  val DefaultRateReceiveCompute = 0.9
+  val DefaultMinRememberDuration = "60s"
 }

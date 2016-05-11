@@ -13,200 +13,100 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.spark.streaming.rabbitmq.receiver
 
-import java.util.Calendar
-
-import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.rabbitmq.client._
 import org.apache.spark.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
+import org.apache.spark.streaming.rabbitmq.ConfigParameters
+import org.apache.spark.streaming.rabbitmq.consumer.Consumer
+import org.apache.spark.streaming.rabbitmq.consumer.Consumer._
 import org.apache.spark.streaming.receiver.Receiver
 
-import scala.collection.JavaConverters._
+import scala.reflect.ClassTag
 import scala.util._
 
 private[rabbitmq]
-class RabbitMQInputDStream(@transient ssc_ : StreamingContext,
-                            params: Map[String, String]
-                            ) extends ReceiverInputDStream[String](ssc_) with Logging {
+class RabbitMQInputDStream[R: ClassTag](
+                                         @transient ssc_ : StreamingContext,
+                                         params: Map[String, String],
+                                         messageHandler: Array[Byte] => R
+                                       ) extends ReceiverInputDStream[R](ssc_) with Logging {
 
-  private val storageLevelParam: String = params.getOrElse("storageLevel", "MEMORY_AND_DISK_SER_2")
+  private val storageLevelParam =
+    params.getOrElse(ConfigParameters.StorageLevelKey, ConfigParameters.DefaultStorageLevel)
 
-  override def getReceiver(): Receiver[String] = {
+  override def getReceiver(): Receiver[R] = {
 
-    new RabbitMQReceiver(params, StorageLevel.fromString(storageLevelParam))
+    new RabbitMQReceiver[R](params, StorageLevel.fromString(storageLevelParam), messageHandler)
   }
 }
 
 private[rabbitmq]
-class RabbitMQReceiver(params: Map[String, String], storageLevel: StorageLevel)
-  extends Receiver[String](storageLevel) with Logging {
+class RabbitMQReceiver[R: ClassTag](
+                                     params: Map[String, String],
+                                     storageLevel: StorageLevel,
+                                     messageHandler: Array[Byte] => R
+                                   )
+  extends Receiver[R](storageLevel) with Logging {
 
-  private val host: String = params.getOrElse("hosts", "localhost")
-  private val rabbitMQQueueName: Option[String] = params.get("queueName")
-  private val exchangeName: String = params.getOrElse("exchangeName", "rabbitmq-exchange")
-  private val exchangeType: String = params.getOrElse("exchangeType", "direct")
-  private val routingKeys: Option[String] = params.get("routingKeys")
-  private val vHost: Option[String] = params.get("vHost")
-  private val username: Option[String] = params.get("username")
-  private val password: Option[String] = params.get("password")
-  private val x_max_length: Option[String] = params.get("x-max-length")
-  private val x_message_ttl: Option[String] = params.get("x-message-ttl")
-  private val x_expires: Option[String] = params.get("x-expires")
-  private val x_max_length_bytes: Option[String] = params.get("x-max-length-bytes")
-  private val x_dead_letter_exchange: Option[String] = params.get("x-dead-letter-exchange")
-  private val x_dead_letter_routing_key: Option[String] = params.get("x-dead-letter-routing-key")
-  private val x_max_priority: Option[String] = params.get("x-max-priority")
-
-  val DirectExchangeType: String = "direct"
-  val TopicExchangeType: String = "topic"
-  val DefaultRabbitMQPort = 5672
-
-      
   def onStart() {
     implicit val akkaSystem = akka.actor.ActorSystem()
-    getConnectionAndChannel match {
-      case Success((connection: Connection, channel: Channel)) => log.info("onStart, Connecting..")
+
+    Try {
+      val consumer = Consumer(params)
+
+      if (getFairDispatchFromParams(params))
+        consumer.setFairDispatchQoS(getPrefetchCountFromParams(params))
+
+      consumer.setQueue(params)
+
+      (consumer, consumer.startConsumer)
+    } match {
+      case Success((consumer, queueConsumer)) =>
+        log.info("onStart, Connecting..")
         new Thread() {
           override def run() {
-            receive(connection, channel)
+            receive(consumer, queueConsumer)
           }
         }.start()
-      case Failure(f) => log.error("Could not connect"); restart("Could not connect", f)
+      case Failure(f) =>
+        log.error("Could not connect"); restart("Could not connect", f)
     }
   }
 
   def onStop() {
-    // There is nothing much to do as the thread calling receive()
-    // is designed to stop by itself isStopped() returns false
-    log.info("onStop, doing nothing.. relaxing...")
+    Consumer.closeConnections()
+    log.info("Closed all RabbitMQ connections")
   }
 
   /** Create a socket connection and receive data until receiver is stopped */
-  private def receive(connection: Connection, channel: Channel) {
-
+  private def receive(consumer: Consumer, queueConsumer: QueueingConsumer) {
     try {
-      val queueName: String = getQueueName(channel)
-  
-      log.info("RabbitMQ Input waiting for messages")
-      val consumer: QueueingConsumer = new QueueingConsumer(channel)
-      log.info("start consuming data")
-      channel.basicConsume(queueName, false, consumer)
-  
-      while (!isStopped()) {
-        val delivery: Delivery = consumer.nextDelivery()
-        store(new Predef.String(delivery.getBody))
-        channel.basicAck(delivery.getEnvelope.getDeliveryTag,false)
-      }
+      log.info("RabbitMQ consumer start consuming data")
+      while (!isStopped() && consumer.channel.isOpen) {
+        val delivery = queueConsumer.nextDelivery()
 
+        store(messageHandler(delivery.getBody))
+
+        if (sendingBasicAckFromParams(params))
+          consumer.sendBasicAck(delivery)
+      }
     } catch {
-      case unknown : Throwable => log.error("Got this unknown exception: " + unknown, unknown)
-    } 
+      case unknown: Throwable =>
+        log.error("Got this unknown exception: " + unknown, unknown)
+    }
     finally {
       log.info("it has been stopped")
-      try { channel.close } catch { case _: Throwable => log.error("error on close channel, ignoring")}
-      try { connection.close} catch { case _: Throwable => log.error("error on close connection, ignoring")}
+      try {
+        consumer.close()
+      } catch {
+        case e: Throwable =>
+          log.error(s"error on close consumer, ignoring it : ${e.getLocalizedMessage}")
+      }
       restart("Trying to connect again")
     }
-  }
-
-  def getQueueName(channel: Channel): String = {
-    // Get the queue name to use (explicit vs auto-generated).
-    val queueName = checkQueueName()
-
-    // Connect to the exchange.
-    log.info(s"declaring exchange '$exchangeName' of type '$exchangeType'")
-    channel.exchangeDeclare(exchangeName, exchangeType, true)
-
-    log.info("declaring queue")
-    channel.queueDeclare(queueName, true, false, false, getParams.asJava)
-
-    // Bind the exchange to the queue.
-    routingKeys match {
-      case Some(routingKey) => {
-        // If routing keys were provided, then bind using them.
-        for (routingKey: String <- routingKey.split(",")) {
-          log.info(s"binding to routing key '$routingKey'")
-          channel.queueBind(queueName, exchangeName, routingKey)
-        }
-      }
-      case None => {
-        log.info("binding exchange using empty routing key")
-        channel.queueBind(queueName, exchangeName, "")
-      }
-    }
-    queueName
-  }
-
-   def getParams() : Map[String, AnyRef] = {
-     var params: Map[String, AnyRef] = Map.empty
-
-     if (x_max_length.isDefined) {
-       params += ("x-max-length" -> x_max_length.get.toInt.asInstanceOf[AnyRef])
-     }
-     if (x_message_ttl.isDefined) {
-       params += ("x-message-ttl" -> x_message_ttl.get.toInt.asInstanceOf[AnyRef])
-     }
-     if (x_expires.isDefined) {
-       params += ("x-expires" -> x_expires.get.toInt.asInstanceOf[AnyRef])
-     }
-     if (x_max_length_bytes.isDefined) {
-       params += ("x-max-length-bytes" -> x_max_length_bytes.get.toInt.asInstanceOf[AnyRef])
-     }
-     if (x_dead_letter_exchange.isDefined) {
-       params += ("x-dead-letter-exchange" -> x_dead_letter_exchange.get.toString.asInstanceOf[AnyRef])
-     }
-     if (x_dead_letter_routing_key.isDefined) {
-       params += ("x-dead-letter-routing-key" -> x_dead_letter_routing_key.get.toString.asInstanceOf[AnyRef])
-     }
-     if (x_max_priority.isDefined) {
-       params += ("x-max-priority" -> x_max_priority.get.toInt.asInstanceOf[AnyRef])
-     }
-     params
-   }
-
-
-  def checkQueueName(): String = {
-    rabbitMQQueueName.getOrElse({
-      log.warn("The name of the queue will be a default name")
-      s"default-queue-${Calendar.getInstance().getTime.toString}"
-    })
-  }
-
-  private def getConnectionAndChannel: Try[(Connection, Channel)] = {
-    log.info("Rabbit host addresses are : " + host)
-    for ( address <- Address.parseAddresses(host) ) {
-      log.info("Address " + address.toString())
-    }
-
-    log.info("creating new connection and channel")
-    for {
-      connection: Connection <- Try(getConnectionFactory.newConnection(Address.parseAddresses(host)))
-      channel: Channel <- Try(connection.createChannel)
-    } yield {
-      log.info("created new connection and channel")
-      (connection, channel)
-    }
-  }
-
-  private def getConnectionFactory: ConnectionFactory = {
-    val factory: ConnectionFactory = new ConnectionFactory
-
-    vHost match {
-      case Some(v) => {
-        factory.setVirtualHost(v)
-        log.info(s"Connecting to virtual host ${factory.getVirtualHost}")
-      }
-      case None =>
-        log.info("No virtual host configured")
-    }
-
-    username.map(factory.setUsername(_))
-    password.map(factory.setPassword(_))
-    factory
   }
 }

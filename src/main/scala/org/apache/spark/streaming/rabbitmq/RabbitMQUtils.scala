@@ -32,23 +32,70 @@ object RabbitMQUtils {
   /**
    * Create an input stream that receives messages from a RabbitMQ.
    *
+   * @param ssc            StreamingContext object
+   * @param params         RabbitMQ params
+   * @param messageHandler Function to convert he raw type of the rabbitMQ messages to the type R
+   */
+  def createStream[R: ClassTag](
+                                 ssc: StreamingContext,
+                                 params: Map[String, String],
+                                 messageHandler: Array[Byte] => R
+                               ): ReceiverInputDStream[R] = {
+    new RabbitMQInputDStream[R](ssc, params, messageHandler)
+  }
+
+  /**
+   * Create an input stream that receives messages from a RabbitMQ.
+   * The result DStream is mapped to Array[Byte] type.
+   *
    * @param ssc    StreamingContext object
    * @param params RabbitMQ params
    */
-  def createStream(ssc: StreamingContext, params: Map[String, String]): ReceiverInputDStream[String] = {
-    new RabbitMQInputDStream(ssc, params)
+  def createStream(
+                    ssc: StreamingContext,
+                    params: Map[String, String]
+                  ): ReceiverInputDStream[Array[Byte]] = {
+    val messageHandler = (rawMessage: Array[Byte]) => rawMessage
+
+    new RabbitMQInputDStream[Array[Byte]](ssc, params, messageHandler)
+  }
+
+  /**
+   * Create an input stream that receives messages from a RabbitMQ.
+   * The result DStream is mapped to String type
+   *
+   * @param ssc    StreamingContext object
+   * @param params RabbitMQ params
+   */
+  def createStream[R >: String <: String : Manifest](
+                                                      ssc: StreamingContext,
+                                                      params: Map[String, String]
+                                                    ): ReceiverInputDStream[String] = {
+    val messageHandler = (rawMessage: Array[Byte]) => new Predef.String(rawMessage)
+
+    new RabbitMQInputDStream[String](ssc, params, messageHandler)
   }
 
   /**
    * Create an input stream that receives messages from a RabbitMQ queue.
    *
-   * @param jssc   JavaStreamingContext object
-   * @param params RabbitMQ params
+   * @param javaStreamingContext JavaStreamingContext object
+   * @param recordClass          Class type for R
+   * @param params               RabbitMQ params
+   * @param messageHandler       Function to convert he raw type of the rabbitMQ messages to the type R
    */
-  def createJavaStream(jssc: JavaStreamingContext,
-                       params: JMap[String, String]): JavaReceiverInputDStream[String] = {
-    implicitly[ClassTag[AnyRef]].asInstanceOf[ClassTag[String]]
-    createStream(jssc.ssc, params.asScala.toMap)
+  def createJavaStream[R](
+                           javaStreamingContext: JavaStreamingContext,
+                           recordClass: Class[R],
+                           params: JMap[String, String],
+                           messageHandler: JFunction[Array[Byte], R]
+                         ): JavaReceiverInputDStream[R] = {
+
+    implicit val recordCmt: ClassTag[R] = ClassTag(recordClass)
+    val cleanedHandler = javaStreamingContext.sparkContext.clean(messageHandler.call _)
+
+
+    createStream[R](javaStreamingContext.ssc, params.asScala.toMap, cleanedHandler)
   }
 
   /**
@@ -58,18 +105,19 @@ object RabbitMQUtils {
    * executor creating more channels, this is transparent to the user.
    * The result DStream is mapped to the type R with the function messageHandler.
    *
-   * @param ssc StreamingContext object
+   * @param ssc             StreamingContext object
    * @param distributedKeys Object that can contains the connections to the queues, it can be more than one and each
    *                        tuple of queue, exchange, routing key and hosts can be one RabbitMQ independent
-   * @param rabbitMQParams RabbitMQ params with queue options, spark options and consumer options
-   * @param messageHandler Function to convert he raw type of the rabbitMQ messages to the type R
+   * @param rabbitMQParams  RabbitMQ params with queue options, spark options and consumer options
+   * @param messageHandler  Function to convert he raw type of the rabbitMQ messages to the type R
    * @tparam R Type or Class that the output DStream should contains for each message consumed
    * @return The new DStream with the messages consumed and parsed to the R type
    */
-  def createDistributedStream[R: ClassTag](ssc: StreamingContext,
-                                           distributedKeys: Seq[RabbitMQDistributedKey],
-                                           rabbitMQParams: Map[String, String],
-                                           messageHandler: Array[Byte] => R
+  def createDistributedStream[R: ClassTag](
+                                            ssc: StreamingContext,
+                                            distributedKeys: Seq[RabbitMQDistributedKey],
+                                            rabbitMQParams: Map[String, String],
+                                            messageHandler: Array[Byte] => R
                                           ): InputDStream[R] = {
     val cleanedHandler = ssc.sc.clean(messageHandler)
 
@@ -82,10 +130,10 @@ object RabbitMQUtils {
    * executor creating more channels, this is transparent to the user.
    * The result DStream is mapped to Array[Byte] type.
    *
-   * @param ssc StreamingContext object
+   * @param ssc             StreamingContext object
    * @param distributedKeys Object that can contains the connections to the queues, it can be more than one and each
    *                        tuple of queue, exchange, routing key and hosts can be one RabbitMQ independent
-   * @param rabbitMQParams RabbitMQ params with queue options, spark options and consumer options
+   * @param rabbitMQParams  RabbitMQ params with queue options, spark options and consumer options
    * @return The new DStream with the messages consumed and parsed to the Raw type (Array[Byte])
    */
   def createDistributedStream(
@@ -105,10 +153,10 @@ object RabbitMQUtils {
    * executor creating more channels, this is transparent to the user.
    * The result DStream is mapped to String type
    *
-   * @param ssc StreamingContext object
+   * @param ssc             StreamingContext object
    * @param distributedKeys Object that can contains the connections to the queues, it can be more than one and each
    *                        tuple of queue, exchange, routing key and hosts can be one RabbitMQ independent
-   * @param rabbitMQParams RabbitMQ params with queue options, spark options and consumer options
+   * @param rabbitMQParams  RabbitMQ params with queue options, spark options and consumer options
    * @tparam R Type or Class that the output DStream should contains for each message consumed
    * @return The new DStream with the messages consumed and parsed to the String type
    */
@@ -130,11 +178,11 @@ object RabbitMQUtils {
    * The result DStream is mapped to the type R with the function messageHandler.
    *
    * @param javaStreamingContext JavaStreamingContext object
-   * @param recordClass Class type for R
-   * @param distributedKeys Object that can contains the connections to the queues, it can be more than one and each
-   *                        tuple of queue, exchange, routing key and hosts can be one RabbitMQ independent
-   * @param rabbitMQParams RabbitMQ params with queue options, spark options and consumer options
-   * @param messageHandler Function to convert he raw type of the rabbitMQ messages to the type R
+   * @param recordClass          Class type for R
+   * @param distributedKeys      Object that can contains the connections to the queues, it can be more than one and each
+   *                             tuple of queue, exchange, routing key and hosts can be one RabbitMQ independent
+   * @param rabbitMQParams       RabbitMQ params with queue options, spark options and consumer options
+   * @param messageHandler       Function to convert he raw type of the rabbitMQ messages to the type R
    * @tparam R Type or Class that the output DStream should contains for each message consumed
    * @return The new DStream with the messages consumed and parsed to the R type
    */

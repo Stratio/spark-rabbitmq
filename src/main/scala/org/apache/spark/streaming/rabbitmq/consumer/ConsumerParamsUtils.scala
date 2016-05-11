@@ -98,6 +98,15 @@ trait ConsumerParamsUtils {
     }
   }
 
+  def getFairDispatchFromParams(params: Map[String, String]): Boolean =
+    Try(params.getOrElse(FairDispatchKey, DefaultFairDispatch.toString).toBoolean)
+      .getOrElse(DefaultFairDispatch)
+
+
+  def getPrefetchCountFromParams(params: Map[String, String]): Int =
+    Try(params.getOrElse(PrefetchCount, DefaultPrefetchCount.toString).toInt)
+      .getOrElse(DefaultPrefetchCount)
+
   def getAckFromParams(params: Map[String, String]): String =
     params.getOrElse(AckTypeKey, DefaultAckType)
 
@@ -128,4 +137,10 @@ trait ConsumerParamsUtils {
 
   def getMaxMessagesPerPartition(params: Map[String, String]): Option[Int] =
     params.get(MaxMessagesPerPartition).map(max => max.toInt)
+
+  /**
+   * Consumer Messages
+   */
+  def getMessageConsumerParams(params: Map[String, String]) : Map[String, AnyRef] =
+    MessageConsumerPropertiesKeys.flatMap(key => params.get(key).map(result => key -> result)).toMap
 }

@@ -17,10 +17,10 @@ package org.apache.spark.streaming.rabbitmq
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SQLContext
-import org.apache.spark.streaming.rabbitmq.RabbitMQUtils
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 object RabbitMQConsumer {
+
   def main(args: Array[String]) {
     // Setup the Streaming context
     val conf = new SparkConf()
@@ -36,7 +36,7 @@ object RabbitMQConsumer {
     // options, along with the default values.
     // All the parameters are shown below, remove the ones
     // that you don't need
-    val receiverStream = RabbitMQUtils.createStream(ssc, Map(
+    val receiverStream = RabbitMQUtils.createStream[String](ssc, Map(
       "hosts" -> "localhost",
       "queueName" -> "rabbitmq-queue",
       "exchangeName" -> "rabbitmq-exchange",
@@ -44,35 +44,21 @@ object RabbitMQConsumer {
       "username" -> "guest",
       "password" -> "guest"
     ))
-
-    val extraParams = Map(
-      "x-max-length" -> "value",
-      "x-max-length" -> "value",
-      "x-message-ttl" -> "value",
-      "x-expires" -> "value",
-      "x-max-length-bytes" -> "value",
-      "x-dead-letter-exchange" -> "value",
-      "x-dead-letter-routing-key" -> "value",
-      "x-max-priority" -> "value"
-    )
-
     val totalEvents = ssc.sparkContext.accumulator(0L, "My Accumulator")
 
     // Start up the receiver.
     receiverStream.start()
 
     // Fires each time the configured window has passed.
-    receiverStream.foreachRDD(r => {
-      val count = r.count()
-      if (count > 0) {
+    receiverStream.foreachRDD(rdd => {
+      if (!rdd.isEmpty()) {
+        val count = rdd.count()
         // Do something with this message
         println(s"EVENTS COUNT : \t $count")
         totalEvents += count
-        println(s"TOTAL EVENTS : \t $totalEvents")
-      }
-      else {
-        println("No new messages...")
-      }
+        //rdd.collect().sortBy(event => event.toInt).foreach(event => print(s"$event, "))
+      } else println("RDD is empty")
+      println(s"TOTAL EVENTS : \t $totalEvents")
     })
 
     ssc.start() // Start the computation

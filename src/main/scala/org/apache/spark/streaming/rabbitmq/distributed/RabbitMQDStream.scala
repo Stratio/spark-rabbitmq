@@ -37,15 +37,26 @@ class RabbitMQDStream[R: ClassTag](
 
   private[streaming] override def name: String = s"RabbitMQ direct stream [$id]"
 
-  private val maxMessagesPerPartition = Consumer.getMaxMessagesPerPartition(rabbitMQParams)
-
   storageLevel = calculateStorageLevel()
 
   /**
-   * Remember duration for the rdd created by this InputDstream
+   * Remember duration for the rdd created by this InputDStream,
+   * by default DefaultMinRememberDuration = 60s * slideWindow
    */
   private val userRememberDuration = Consumer.getRememberDuration(rabbitMQParams)
-  userRememberDuration.foreach(duration => rememberDuration = Seconds(duration))
+
+  userRememberDuration match {
+    case Some(duration) =>
+      remember(Seconds(duration))
+    case None =>
+      val minRememberDuration = Seconds(ssc.conf.getTimeAsSeconds(
+        ssc.conf.get("spark.streaming.minRememberDuration", DefaultMinRememberDuration), DefaultMinRememberDuration))
+      val numBatchesToRemember = math.ceil(minRememberDuration.milliseconds / slideDuration.milliseconds).toInt
+
+      remember(slideDuration * numBatchesToRemember)
+  }
+
+  private val maxMessagesPerPartition = Consumer.getMaxMessagesPerPartition(rabbitMQParams)
 
   /**
    * Min storage level is MEMORY_ONLY, because compute function for one rdd is called more than one place
@@ -64,40 +75,42 @@ class RabbitMQDStream[R: ClassTag](
    */
   private[streaming] def maxMessages(): Option[(Int, Long)] = {
     val estimatedRateLimit = rateController.map(_.getLatestRate().toInt)
-    estimatedRateLimit.flatMap(rateLimit => {
-      if (rateLimit > 0) {
-        val maxPartitions = getMaxMessagesBasedOnPartitions
-        val maxMessages = Math.max(
-          (context.graph.batchDuration.milliseconds.toDouble / 1000 * rateLimit).toLong,
-          maxPartitions
-        )
+    estimatedRateLimit.flatMap(estimatedRateLimit => {
+      if (estimatedRateLimit > 0) {
+        val messagesRateController = ((slideDuration.milliseconds.toDouble / 1000) * estimatedRateLimit).toLong
 
-        Option((rateLimit, maxMessages))
+        Option((estimatedRateLimit, getMaxMessagesBasedOnPartitions(messagesRateController)))
       } else None
     })
   }
 
   /**
    *
-   * @return max number of messages that the input RDD must receive in the next window based on the parallelism
-   *         multiplied with the number of distributed keys or the number of exchanges
+   * @return max number of messages that the input RDD must receive in the next window by partition based on the
+   *         parallelism multiplied with the number of distributed keys or the number of exchanges
    */
-  private[streaming] def getMaxMessagesBasedOnPartitions: Long = {
-    if (maxMessagesPerPartition.isDefined) {
-      val parallelism = Consumer.getParallelism(rabbitMQParams)
-      val keys = if (distributedKeys.nonEmpty)
-        distributedKeys
-      else Consumer.getDistributedKeysParams(rabbitMQParams)
-      val numPartitions = keys.size * parallelism
+  private[streaming] def getMaxMessagesBasedOnPartitions(messagesRateController: Long): Long = {
+    maxMessagesPerPartition.fold(getNumPartitions * messagesRateController) { maxMessagesPartition =>
+      Math.min(messagesRateController, maxMessagesPartition)
+    }
+  }
 
-      numPartitions * maxMessagesPerPartition.get
-    } else 0L
+  /**
+   * @return The number of partitions for the RDD created by this DStream
+   */
+  private[streaming] def getNumPartitions : Int = {
+    val parallelism = Consumer.getParallelism(rabbitMQParams)
+    val keys = if (distributedKeys.nonEmpty)
+      distributedKeys
+    else Consumer.getDistributedKeysParams(rabbitMQParams)
+
+    keys.size * parallelism
   }
 
   override def compute(validTime: Time): Option[RabbitMQRDD[R]] = {
     //Set the receive time to the streaming window if is 0 the maxReceiveTime property
     val receiveTime = Consumer.getMaxReceiveTime(rabbitMQParams) match {
-      case 0L => context.graph.batchDuration.milliseconds.toString
+      case 0L => math.ceil(slideDuration.milliseconds * DefaultRateReceiveCompute).toInt.toString
       case value: Long => value.toString
     }
     // Report the record number and metadata of this batch interval to InputInfoTracker and calculate the maxMessages
@@ -132,7 +145,10 @@ class RabbitMQDStream[R: ClassTag](
 
   override def start(): Unit = {}
 
-  override def stop(): Unit = {}
+  override def stop(): Unit = {
+    RabbitMQRDD.shutDownActorSystem()
+    Consumer.closeConnections()
+  }
 
   /**
    * Asynchronously maintains & sends new rate limits to the receiver through the receiver tracker.
@@ -150,6 +166,7 @@ class RabbitMQDStream[R: ClassTag](
     extends RateController(id, estimator) {
 
     override def publish(rate: Long): Unit = {
+      ssc.scheduler.receiverTracker.sendRateUpdate(id, rate)
     }
   }
 

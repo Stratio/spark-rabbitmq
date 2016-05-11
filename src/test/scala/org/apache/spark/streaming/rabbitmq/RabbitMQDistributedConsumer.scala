@@ -16,7 +16,6 @@
 package org.apache.spark.streaming.rabbitmq
 
 import org.apache.spark.SparkConf
-import org.apache.spark.streaming.rabbitmq.RabbitMQUtils
 import org.apache.spark.streaming.rabbitmq.distributed.RabbitMQDistributedKey
 import org.apache.spark.streaming.rabbitmq.models.ExchangeAndRouting
 import org.apache.spark.streaming.{Seconds, StreamingContext}
@@ -27,27 +26,48 @@ object RabbitMQDistributedConsumer {
     // Setup the Streaming context
     val conf = new SparkConf()
       .setAppName("rabbitmq-receiver-example")
-      .setIfMissing("spark.master", "local[1]")
+      .setIfMissing("spark.master", "local[*]")
     val ssc = new StreamingContext(conf, Seconds(10))
 
+
     val rabbitMQParams = Map(
-      "hosts" -> "localhost",
+      //"maxMessagesPerPartition" -> "1000",
+      //"storageLevel" -> "MEMORY_AND_DISK",
+      //"ackType" -> "auto",
+      // "maxReceiveTime" -> "9000",
+      //"rememberDuration" -> "20000",
+      "levelParallelism" -> "1"
+    )
+
+    val rabbitMQConnection1 = Map(
+      "hosts" -> "172.17.0.2",
       "queueName" -> "rabbitmq-queue",
       "exchangeName" -> "rabbitmq-exchange",
       "vHost" -> "/",
       "username" -> "guest",
-      "password" -> "guest",
-      //"maxMessagesPerPartition" -> "1000",
-      "levelParallelism" -> "1",
-      //"ackType" -> "auto",
-      "maxReceiveTime" -> "9000",
-      "rememberDuration" -> "120000"
+      "password" -> "guest"
     )
-    val distributedKey = Seq(RabbitMQDistributedKey(
-      "rabbitmq-queue",
-      new ExchangeAndRouting("rabbitmq-exchange", "rabbitmq-queue"),
-      rabbitMQParams
-    ))
+
+    val rabbitMQConnection2 = Map(
+      "hosts" -> "172.17.0.3",
+      "queueName" -> "rabbitmq-queue",
+      "exchangeName" -> "rabbitmq-exchange",
+      "vHost" -> "/",
+      "username" -> "guest",
+      "password" -> "guest"
+    )
+    val distributedKey = Seq(
+      RabbitMQDistributedKey(
+        "rabbitmq-queue",
+        new ExchangeAndRouting("rabbitmq-exchange", "rabbitmq-queue"),
+        rabbitMQConnection1
+      ),
+      RabbitMQDistributedKey(
+        "rabbitmq-queue",
+        new ExchangeAndRouting("rabbitmq-exchange", "rabbitmq-queue"),
+        rabbitMQConnection2
+      )
+    )
     val distributedStream = RabbitMQUtils.createDistributedStream[String](ssc, distributedKey, rabbitMQParams)
 
     val totalEvents = ssc.sparkContext.accumulator(0L, "Number of events received")
@@ -59,12 +79,12 @@ object RabbitMQDistributedConsumer {
     distributedStream.foreachRDD(rdd => {
       if (!rdd.isEmpty()) {
         val count = rdd.count()
-        val count2 = rdd.count()
+        //val countCached = rdd.count()
         // Do something with this message
         println(s"EVENTS COUNT : \t $count")
-        println(s"EVENTS COUNT2 : \t $count2")
+        //println(s"EVENTS COUNT CACHED : \t $countCached")
         totalEvents += count
-        //rdd.collect().foreach(event => print(s"$event, "))
+        //rdd.collect().sortBy(event => event.toInt).foreach(event => print(s"$event, "))
       } else println("RDD is empty")
       println(s"TOTAL EVENTS : \t $totalEvents")
     })

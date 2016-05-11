@@ -21,6 +21,7 @@ import com.typesafe.config.ConfigFactory
 import org.apache.spark.partial.{BoundedDouble, CountEvaluator, PartialResult}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.rabbitmq.consumer.Consumer
+import org.apache.spark.streaming.rabbitmq.consumer.Consumer._
 import org.apache.spark.util.{NextIterator, Utils}
 import org.apache.spark.{Accumulator, Logging, Partition, SparkContext, SparkException, TaskContext}
 
@@ -81,13 +82,16 @@ class RabbitMQRDD[R: ClassTag](
    * Return if the RDD is empty. Optimized when count are called before
    */
   override def isEmpty(): Boolean = {
-    if (totalCalculated.isDefined) {
-      count == 0L
-    } else {
+    totalCalculated.fold {
       withScope {
         partitions.length == 0 || take(1).length == 0
       }
-    }
+    } { total => total == 0L }
+  }
+
+  override def take(num: Int): Array[R] = {
+    if (totalCalculated.isEmpty) count()
+    super.take(num)
   }
 
   /**
@@ -98,10 +102,10 @@ class RabbitMQRDD[R: ClassTag](
    * @return the number of Partitions calculated for this RDD
    */
   override def getPartitions: Array[Partition] = {
-    val parallelism = Consumer.getParallelism(rabbitMQParams)
+    val parallelism = getParallelism(rabbitMQParams)
     val keys = if (distributedKeys.nonEmpty)
       distributedKeys
-    else Consumer.getDistributedKeysParams(rabbitMQParams)
+    else getDistributedKeysParams(rabbitMQParams)
 
     keys.zipWithIndex.flatMap { case (key, index) =>
       (0 until parallelism).map(indexParallelism => {
@@ -125,11 +129,16 @@ class RabbitMQRDD[R: ClassTag](
   override def getPreferredLocations(thePart: Partition): Seq[String] = {
     val part = thePart.asInstanceOf[RabbitMQPartition]
 
-    Seq(Consumer.getHosts(part.connectionParams))
+    Seq(getHosts(part.connectionParams))
   }
 
-  override def compute(thePart: Partition, context: TaskContext): Iterator[R] =
-    new RabbitMQRDDIterator(thePart.asInstanceOf[RabbitMQPartition], context)
+  override def compute(thePart: Partition, context: TaskContext): Iterator[R] = {
+    val rabbitMQPartition = thePart.asInstanceOf[RabbitMQPartition]
+
+    log.debug(s"Computing Partition: ${thePart.index} from \t[${rabbitMQPartition.toStringPretty}]")
+
+    new RabbitMQRDDIterator(rabbitMQPartition, context)
+  }
 
   private class RabbitMQRDDIterator(
                                      part: RabbitMQPartition,
@@ -143,7 +152,7 @@ class RabbitMQRDD[R: ClassTag](
         RabbitMQRDD.shutDownActorSystem()
         log.info(s"Task interrupted, closing RabbitMQ connections in partition: ${part.index}")
         closeIfNeeded()
-        Consumer.closeConnections()
+        closeConnections()
       }
     })
 
@@ -159,12 +168,12 @@ class RabbitMQRDD[R: ClassTag](
     //The actorSystem and the receiveTime are used to limit the number of milliseconds that the partition is
     // receiving data from RabbitMQ
     val system = RabbitMQRDD.getActorSystem
-    val receiveTime = Consumer.getMaxReceiveTime(rabbitParams)
-    val maxMessagesPerPartition = Consumer.getMaxMessagesPerPartition(rabbitParams)
+    val receiveTime = getMaxReceiveTime(rabbitParams)
+    val maxMessagesPerPartition = getMaxMessagesPerPartition(rabbitParams)
 
     //Execute this code every certain time, the consumer must stop with this timeout
     val scheduleProcess = system.scheduler.scheduleOnce(receiveTime milliseconds) {
-      finishProcess()
+      finished = true
       queueConsumer.handleCancel("timeout")
     }
 
@@ -173,25 +182,25 @@ class RabbitMQRDD[R: ClassTag](
     override def getNext(): R = {
       synchronized {
         if (finished || (maxMessagesPerPartition.isDefined && numMessages >= maxMessagesPerPartition.get)) {
-          finishProcess()
+          finishIterationAndReturn()
         } else {
           Try {
-              val delivery = queueConsumer.nextDelivery()
+            val delivery = queueConsumer.nextDelivery()
 
-              (delivery, messageHandler(delivery.getBody))
+            (delivery, messageHandler(delivery.getBody))
           } match {
             case Success((delivery, data)) =>
               //Send ack if not set the auto ack property
-              if (Consumer.sendingBasicAckFromParams(rabbitParams))
+              if (sendingBasicAckFromParams(rabbitParams))
                 consumer.sendBasicAck(delivery)
               //Increment the number of messages consumed correctly
               numMessages += 1
               data
             case Failure(e: ConsumerCancelledException) =>
-              finishProcess()
+              finishIterationAndReturn()
             case Failure(e) =>
               Try {
-                finishProcess()
+                finished = true
                 closeIfNeeded()
               }
               throw new SparkException(s"Error receiving data from RabbitMQ with error: ${e.getLocalizedMessage}")
@@ -210,7 +219,7 @@ class RabbitMQRDD[R: ClassTag](
       consumer.close()
     }
 
-    private def finishProcess(): R = {
+    private def finishIterationAndReturn(): R = {
       finished = true
       null.asInstanceOf[R]
     }
@@ -226,8 +235,8 @@ class RabbitMQRDD[R: ClassTag](
       )
       //If the number of consumers in the same queue are more than one, the Fair Dispatch should be 1, in other case
       // the user can lose events
-      if (part.withFairDispatch)
-        consumer.setFairDispatchQoS()
+      if (getFairDispatchFromParams(consumerParams))
+        consumer.setFairDispatchQoS(getPrefetchCountFromParams(consumerParams))
 
       consumer
     }
