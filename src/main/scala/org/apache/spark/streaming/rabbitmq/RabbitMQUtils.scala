@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -186,7 +186,7 @@ object RabbitMQUtils {
    * @tparam R Type or Class that the output DStream should contains for each message consumed
    * @return The new DStream with the messages consumed and parsed to the R type
    */
-  def createDistributedStream[R](
+  def createJavaDistributedStream[R](
                                   javaStreamingContext: JavaStreamingContext,
                                   recordClass: Class[R],
                                   distributedKeys: JList[RabbitMQDistributedKey],
