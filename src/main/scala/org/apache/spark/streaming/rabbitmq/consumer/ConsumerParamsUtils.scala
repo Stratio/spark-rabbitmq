@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.spark.streaming.rabbitmq.consumer
 
 import com.rabbitmq.client.Address
@@ -26,29 +27,26 @@ import scala.util.Try
 private[rabbitmq]
 trait ConsumerParamsUtils {
 
-
   /**
    * Grouped params by functionality
    */
   def getConnectionParams(params: Map[String, String]): Map[String, String] =
-    params.filterKeys(key => ConnectionKeys.contains(key))
+    params filterKeys ConnectionKeys.contains
 
   def getConnectionTopologyParams(params: Map[String, String]): Map[String, String] =
-    params.filterKeys(key => ConnectionTopologyKeys.contains(key))
+    params filterKeys ConnectionTopologyKeys.contains
 
   def getQueueConnectionPropertiesParams(params: Map[String, String]): Map[String, String] =
-    params.filterKeys(key => QueueConnectionPropertiesKeys.contains(key))
+    params filterKeys QueueConnectionPropertiesKeys.contains
 
   def getSparkConsumerPropertiesParams(params: Map[String, String]): Map[String, String] =
-    params.filterKeys(key => SparkConsumerPropertiesKeys.contains(key))
-
+    params filterKeys SparkConsumerPropertiesKeys.contains
 
   /**
    * Connection params
    */
-  def getHosts(params: Map[String, String]): String = {
+  def getHosts(params: Map[String, String]): String =
     params.getOrElse(HostsKey, DefaultHost)
-  }
 
   def getAddresses(params: Map[String, String]): Array[Address] = {
     val hosts = getHosts(params)
@@ -76,7 +74,6 @@ trait ConsumerParamsUtils {
     ExchangeAndRouting(exchangeName, exchangeType, routingKeys)
   }
 
-
   /**
    * Queue Properties
    */
@@ -91,17 +88,15 @@ trait ConsumerParamsUtils {
     QueueConnectionOpts(durable, exclusive, autoDelete)
   }
 
-  def getAutoAckFromParams(params: Map[String, String]): Boolean = {
+  def getAutoAckFromParams(params: Map[String, String]): Boolean =
     params.getOrElse(AckTypeKey, DefaultAckType) match {
       case AutoAckType => true
       case _ => false
     }
-  }
 
   def getFairDispatchFromParams(params: Map[String, String]): Boolean =
     Try(params.getOrElse(FairDispatchKey, DefaultFairDispatch.toString).toBoolean)
       .getOrElse(DefaultFairDispatch)
-
 
   def getPrefetchCountFromParams(params: Map[String, String]): Int =
     Try(params.getOrElse(PrefetchCount, DefaultPrefetchCount.toString).toInt)
@@ -113,7 +108,6 @@ trait ConsumerParamsUtils {
   def sendingBasicAckFromParams(params: Map[String, String]): Boolean =
     getAckFromParams(params) == BasicAckType
 
-
   /**
    * Spark properties
    */
@@ -121,26 +115,27 @@ trait ConsumerParamsUtils {
     Try(params.getOrElse(MaxReceiveTime, DefaultMaxReceiveTime.toString).toLong)
       .getOrElse(DefaultMaxReceiveTime)
 
-  def getParallelism(params: Map[String, String]): Int = {
+  def getParallelism(params: Map[String, String]): Int =
     Try(params.getOrElse(LevelParallelism, DefaultLevelParallelism.toString).toInt)
       .getOrElse(DefaultLevelParallelism)
-  }
 
-  def getRememberDuration(params: Map[String, String]): Option[Long] = {
+  def getRememberDuration(params: Map[String, String]): Option[Long] =
     Try(params.get(RememberDuration).map(_.toLong)).getOrElse(None)
-  }
 
-  def getStorageLevel(params: Map[String, String]): StorageLevel = {
+  def getStorageLevel(params: Map[String, String]): StorageLevel =
     StorageLevel.fromString(Try(params.getOrElse(StorageLevelKey, DefaultStorageLevel))
       .getOrElse(DefaultStorageLevel))
-  }
 
   def getMaxMessagesPerPartition(params: Map[String, String]): Option[Int] =
-    params.get(MaxMessagesPerPartition).map(max => max.toInt)
+    params.get(MaxMessagesPerPartition).map(_.toInt)
 
   /**
    * Consumer Messages
    */
-  def getMessageConsumerParams(params: Map[String, String]) : Map[String, AnyRef] =
-    MessageConsumerPropertiesKeys.flatMap(key => params.get(key).map(result => key -> result)).toMap
+  def getMessageConsumerParams(params: Map[String, String]): Map[String, AnyRef] = {
+    for {
+      key <- MessageConsumerPropertiesKeys
+      param <- params.get(key)
+    } yield (key, param)
+  }.toMap
 }

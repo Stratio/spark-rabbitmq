@@ -47,7 +47,8 @@ class RabbitMQRDD[R: ClassTag](
   override def count(): Long = {
     totalCalculated.getOrElse {
       withScope {
-        totalCalculated = Option(sc.runJob(this, Utils.getIteratorSize _).sum)
+        sc.runJob(this, Utils.getIteratorSize _)
+        totalCalculated = Option(countAccumulator.value)
         totalCalculated.get
       }
     }

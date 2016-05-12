@@ -30,14 +30,18 @@ object RabbitMQDistributedConsumer {
     val ssc = new StreamingContext(conf, Seconds(10))
 
 
-    val rabbitMQParams = Map(
-      //"maxMessagesPerPartition" -> "1000",
-      //"storageLevel" -> "MEMORY_AND_DISK",
-      //"ackType" -> "auto",
-      // "maxReceiveTime" -> "9000",
-      //"rememberDuration" -> "20000",
-      "levelParallelism" -> "1"
-    )
+    /**
+     * Is possible to use this params example:
+     * Map(
+          "maxMessagesPerPartition" -> "1000",
+          "storageLevel" -> "MEMORY_AND_DISK",
+          "ackType" -> "auto",
+          "maxReceiveTime" -> "9000",
+          "rememberDuration" -> "20000",
+          "levelParallelism" -> "1"
+        )
+     */
+    val rabbitMQParams = Map.empty[String, String]
 
     val rabbitMQConnection1 = Map(
       "hosts" -> "172.17.0.2",
@@ -79,10 +83,8 @@ object RabbitMQDistributedConsumer {
     distributedStream.foreachRDD(rdd => {
       if (!rdd.isEmpty()) {
         val count = rdd.count()
-        //val countCached = rdd.count()
         // Do something with this message
         println(s"EVENTS COUNT : \t $count")
-        //println(s"EVENTS COUNT CACHED : \t $countCached")
         totalEvents += count
         //rdd.collect().sortBy(event => event.toInt).foreach(event => print(s"$event, "))
       } else println("RDD is empty")
