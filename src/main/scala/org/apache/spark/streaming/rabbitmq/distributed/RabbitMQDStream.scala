@@ -71,7 +71,7 @@ class RabbitMQDStream[R: ClassTag](
 
   /**
    * Calculate the max number of messages that the receiver must receive and process in one batch when the
-   * blackPressure is enable, then we must override the rabbitMQ property in the rdd creation
+   * backPressure is enable, then we must override the rabbitMQ property in the rdd creation
    */
   private[streaming] def maxMessages(): Option[(Int, Long)] = {
     val estimatedRateLimit = rateController.map(_.getLatestRate().toInt)
