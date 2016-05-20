@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.receiver
+package org.apache.spark.streaming.rabbitmq
 
-import com.stratio.receiver.RabbitMQUtils
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 object RabbitMQConsumer {
+
   def main(args: Array[String]) {
     // Setup the Streaming context
     val conf = new SparkConf()
@@ -36,35 +36,29 @@ object RabbitMQConsumer {
     // options, along with the default values.
     // All the parameters are shown below, remove the ones
     // that you don't need
-    val receiverStream = RabbitMQUtils.createStream(ssc, Map(
-      "host" -> "localhost",
+    val receiverStream = RabbitMQUtils.createStream[String](ssc, Map(
+      "hosts" -> "localhost",
       "queueName" -> "rabbitmq-queue",
       "exchangeName" -> "rabbitmq-exchange",
-      "vHost" -> "rabbitmq-vHost",
-      "username" -> "rabbitmq-user",
-      "password" -> "rabbitmq-password",
-      "x-max-length" -> "value",
-      "x-max-length" -> "value",
-      "x-message-ttl" -> "value",
-      "x-expires" -> "value",
-      "x-max-length-bytes" -> "value",
-      "x-dead-letter-exchange" -> "value",
-      "x-dead-letter-routing-key" -> "value",
-      "x-max-priority" -> "value"
+      "vHost" -> "/",
+      "username" -> "guest",
+      "password" -> "guest"
     ))
+    val totalEvents = ssc.sparkContext.accumulator(0L, "My Accumulator")
 
     // Start up the receiver.
     receiverStream.start()
 
     // Fires each time the configured window has passed.
-    receiverStream.foreachRDD(r => {
-      if (r.count() > 0) {
+    receiverStream.foreachRDD(rdd => {
+      if (!rdd.isEmpty()) {
+        val count = rdd.count()
         // Do something with this message
-        println(r)
-      }
-      else {
-        println("No new messages...")
-      }
+        println(s"EVENTS COUNT : \t $count")
+        totalEvents += count
+        //rdd.collect().sortBy(event => event.toInt).foreach(event => print(s"$event, "))
+      } else println("RDD is empty")
+      println(s"TOTAL EVENTS : \t $totalEvents")
     })
 
     ssc.start() // Start the computation

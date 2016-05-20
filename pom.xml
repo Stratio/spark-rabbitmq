@@ -23,7 +23,7 @@
     <parent>
         <groupId>com.stratio</groupId>
         <artifactId>parent</artifactId>
-        <version>0.5.0</version>
+        <version>0.7.2</version>
     </parent>
 
     <groupId>com.stratio.receiver</groupId>
@@ -32,7 +32,7 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>spark-rabbitmq_1.4</module>
+        <module>spark-rabbitmq_1.6</module>
         <module>spark-rabbitmq_1.5</module>
     </modules>
 
@@ -52,41 +52,9 @@
 
     <developers>
         <developer>
-            <id>ajnavarro</id>
-            <name>Antonio Jesus Navarro</name>
-            <email>ajnavarro@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
-            <id>gmunoz</id>
-            <name>Gaspar Muñoz</name>
-            <email>gmunoz@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
-            <id>smola</id>
-            <name>Santiago M. Mola</name>
-            <email>smola@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
             <id>jcgarcia</id>
             <name>Jose Carlos Garcia</name>
             <email>jcgarcia@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
-            <id>anistal</id>
-            <name>Alvaro Nistal Cañal</name>
-            <email>anistal@stratio.com</email>
             <roles>
                 <role>developer</role>
             </roles>
@@ -107,29 +75,13 @@
                 <role>developer</role>
             </roles>
         </developer>
-        <developer>
-            <id>arincon</id>
-            <name>Abel Rincon</name>
-            <email>arincon@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
-            <id>sgomezg</id>
-            <name>Sergio Gómez</name>
-            <email>sgomez@stratio.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
     </developers>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <scala.binary.version>2.10</scala.binary.version>
-        <rabbitmq.version>3.5.1</rabbitmq.version>
+        <rabbitmq.version>3.6.1</rabbitmq.version>
         <joda.version>2.8.2</joda.version>
     </properties>
 
