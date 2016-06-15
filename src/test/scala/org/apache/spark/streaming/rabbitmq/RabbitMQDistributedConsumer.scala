@@ -48,7 +48,7 @@ object RabbitMQDistributedConsumer {
       "queueName" -> "rabbitmq-queue",
       "exchangeName" -> "rabbitmq-exchange",
       "vHost" -> "/",
-      "username" -> "guest",
+      "userName" -> "guest",
       "password" -> "guest"
     )
 
@@ -57,7 +57,7 @@ object RabbitMQDistributedConsumer {
       "queueName" -> "rabbitmq-queue",
       "exchangeName" -> "rabbitmq-exchange",
       "vHost" -> "/",
-      "username" -> "guest",
+      "userName" -> "guest",
       "password" -> "guest"
     )
     val distributedKey = Seq(

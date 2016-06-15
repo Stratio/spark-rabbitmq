@@ -15,12 +15,24 @@
  */
 package org.apache.spark.streaming.rabbitmq.distributed
 
+import java.util.{Map => JMap}
+
 import org.apache.spark.streaming.rabbitmq.models.ExchangeAndRouting
 
 case class RabbitMQDistributedKey(
                                    queue: String,
                                    exchangeAndRouting: ExchangeAndRouting = ExchangeAndRouting(),
                                    connectionParams: Map[String, String] = Map.empty[String, String]
+                                 ) {
+
+  override def toString =
+    s"[Queue: $queue, ${exchangeAndRouting.toStringPretty()}]"
+}
+
+case class JavaRabbitMQDistributedKey(
+                                   queue: String,
+                                   exchangeAndRouting: ExchangeAndRouting = ExchangeAndRouting(),
+                                   connectionParams: JMap[String, String]
                                  ) {
 
   override def toString =
