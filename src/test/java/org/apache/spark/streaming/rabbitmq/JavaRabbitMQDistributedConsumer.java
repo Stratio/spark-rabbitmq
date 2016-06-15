@@ -18,27 +18,35 @@ package org.apache.spark.streaming.rabbitmq;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.streaming.Duration;
-import org.apache.spark.streaming.api.java.JavaReceiverInputDStream;
+import org.apache.spark.streaming.api.java.JavaInputDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
+import org.apache.spark.streaming.rabbitmq.distributed.JavaRabbitMQDistributedKey;
+import org.apache.spark.streaming.rabbitmq.models.ExchangeAndRouting;
 
+import java.io.Serializable;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.LinkedList;
+import java.util.List;
 
 
-public final class JavaRabbitMQConsumer {
+public final class JavaRabbitMQDistributedConsumer implements Serializable {
 
     public static void main(String[] args) {
 
         SparkConf sparkConf = new SparkConf().setAppName("JavaRabbitMQConsumer").setMaster("local[2]");
         JavaStreamingContext jssc = new JavaStreamingContext(sparkConf, new Duration(10000));
-        Map<String, String> params = new HashMap<String, String>();
+        java.util.Map<String, String> params = new HashMap<String, String>();
+        List<JavaRabbitMQDistributedKey> distributedKeys = new LinkedList<JavaRabbitMQDistributedKey>();
 
         params.put("hosts", "localhost");
-        params.put("queueName", "rabbitmq-queue");
-        params.put("exchangeName", "rabbitmq-exchange");
         params.put("vHost", "/");
         params.put("userName", "guest");
         params.put("password", "guest");
+
+        distributedKeys.add(new JavaRabbitMQDistributedKey("rabbitmq-queue",
+                new ExchangeAndRouting("rabbitmq-exchange"),
+                params
+        ));
 
         Function<byte[], String> messageHandler = new Function<byte[], String>() {
 
@@ -47,8 +55,8 @@ public final class JavaRabbitMQConsumer {
             }
         };
 
-        JavaReceiverInputDStream<String> messages =
-                RabbitMQUtils.createJavaStream(jssc, String.class, params, messageHandler);
+        JavaInputDStream<String> messages =
+                RabbitMQUtils.createJavaDistributedStream(jssc, String.class, distributedKeys, params, messageHandler);
 
         messages.print();
 

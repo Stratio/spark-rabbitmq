@@ -41,7 +41,7 @@ object RabbitMQConsumer {
       "queueName" -> "rabbitmq-queue",
       "exchangeName" -> "rabbitmq-exchange",
       "vHost" -> "/",
-      "username" -> "guest",
+      "userName" -> "guest",
       "password" -> "guest"
     ))
     val totalEvents = ssc.sparkContext.accumulator(0L, "My Accumulator")

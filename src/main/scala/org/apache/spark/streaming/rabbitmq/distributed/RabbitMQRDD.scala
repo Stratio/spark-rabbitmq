@@ -114,7 +114,7 @@ class RabbitMQRDD[R: ClassTag](
           parallelism * index + indexParallelism,
           key.queue,
           key.exchangeAndRouting,
-          key.connectionParams,
+          rabbitMQParams ++ key.connectionParams,
           parallelism > 1
         )
       })
@@ -158,7 +158,7 @@ class RabbitMQRDD[R: ClassTag](
     })
 
     //Parameters of the RDD are merged with the parameters for this partition
-    val rabbitParams = rabbitMQParams ++ part.connectionParams
+    val rabbitParams = part.connectionParams
     //Get or create one consumer, create one new channel if this consumer use one connection that was created
     // previously is reused
     val consumer = getConsumer(part, rabbitParams)
