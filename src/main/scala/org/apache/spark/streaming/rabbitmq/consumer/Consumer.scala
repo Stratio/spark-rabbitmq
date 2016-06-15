@@ -15,9 +15,7 @@
  */
 package org.apache.spark.streaming.rabbitmq.consumer
 
-import java.util
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.JavaConversions._
 
 import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.rabbitmq.client.{Connection, ConnectionFactory, _}
@@ -25,6 +23,7 @@ import org.apache.spark.streaming.rabbitmq.ConfigParameters._
 import org.apache.spark.streaming.rabbitmq.models.{ExchangeAndRouting, QueueConnectionOpts}
 import org.apache.spark.{Logging, SparkException}
 
+import scala.collection.JavaConversions._
 import scala.util.{Failure, Success, Try}
 
 /**
