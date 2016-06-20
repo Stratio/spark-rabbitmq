@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,34 +15,22 @@
  */
 package org.apache.spark.streaming.rabbitmq
 
-import org.apache.spark.SparkConf
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 
-object RabbitMQConsumer {
+@RunWith(classOf[JUnitRunner])
+class RabbitMQConsumerIT extends TemporalDataSuite {
 
-  def main(args: Array[String]) {
-    // Setup the Streaming context
-    val conf = new SparkConf()
-      .setAppName("rabbitmq-receiver-example")
-      .setIfMissing("spark.master", "local[*]")
-    val ssc = new StreamingContext(conf, Seconds(10))
+  test("RabbitMQ Receiver should read all the records") {
 
-    // Setup the SQL context
-    val sqlContext = new SQLContext(ssc.sparkContext)
-
-    // Setup the receiver stream to connect to RabbitMQ.
-    // Check the RabbitMQInputDStream class to see the full list of
-    // options, along with the default values.
-    // All the parameters are shown below, remove the ones
-    // that you don't need
     val receiverStream = RabbitMQUtils.createStream[String](ssc, Map(
-      "hosts" -> "localhost",
-      "queueName" -> "rabbitmq-queue",
-      "exchangeName" -> "rabbitmq-exchange",
-      "vHost" -> "/",
-      "userName" -> "guest",
-      "password" -> "guest"
+      "hosts" -> hosts,
+      "queueName" -> queueName,
+      "exchangeName" -> exchangeName,
+      "exchangeType" -> exchangeType,
+      "vHost" -> vHost,
+      "userName" -> userName,
+      "password" -> password
     ))
     val totalEvents = ssc.sparkContext.accumulator(0L, "My Accumulator")
 
@@ -62,6 +50,8 @@ object RabbitMQConsumer {
     })
 
     ssc.start() // Start the computation
-    ssc.awaitTermination() // Wait for the computation to terminate
+    ssc.awaitTerminationOrTimeout(10000L) // Wait for the computation to terminate
+
+    assert(totalEvents.value === totalRegisters.toLong)
   }
 }
