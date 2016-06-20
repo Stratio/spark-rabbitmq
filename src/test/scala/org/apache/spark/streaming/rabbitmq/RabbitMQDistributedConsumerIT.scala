@@ -15,6 +15,8 @@
  */
 package org.apache.spark.streaming.rabbitmq
 
+import java.util.UUID
+
 import org.apache.spark.streaming.rabbitmq.distributed.RabbitMQDistributedKey
 import org.apache.spark.streaming.rabbitmq.models.ExchangeAndRouting
 import org.junit.runner.RunWith
@@ -22,6 +24,10 @@ import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class RabbitMQDistributedConsumerIT extends TemporalDataSuite {
+
+  override val queueName = s"$configQueueName-${this.getClass().getName()}-${UUID.randomUUID().toString}"
+
+  override val exchangeName = s"$configExchangeName-${this.getClass().getName()}-${UUID.randomUUID().toString}"
 
     test("RabbitMQ Receiver should read all the records") {
       /**
