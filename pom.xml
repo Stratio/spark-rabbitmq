@@ -28,7 +28,7 @@
 
     <groupId>com.stratio.receiver</groupId>
     <artifactId>spark-rabbitmq</artifactId>
-    <version>0.3.0-RC3-SNAPSHOT</version>
+    <version>0.3.0</version>
     <packaging>pom</packaging>
 
     <modules>

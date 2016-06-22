@@ -2,7 +2,7 @@
 
 Only listing significant user-visible, not internal code cleanups and minor bug fixes. 
 
-## 0.3.0 (June 2016)
+## 0.3.0 (22 June 2016)
 
 * Compatibility for Spark version 1.6.1
 * Bug fixing
