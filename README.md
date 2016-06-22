@@ -1,3 +1,6 @@
+[![Coverage Status](https://coveralls.io/repos/github/Stratio/RabbitMQ-Receiver/badge.svg?branch=master)]
+(https://coveralls.io/github/Stratio/RabbitMQ-Receiver?branch=master)
+
 # RabbitMQ Spark Streaming Receiver
 
 RabbitMQ-Receiver is a library that allows the user to read data with [Apache Spark Streaming](https://spark.apache.org/)

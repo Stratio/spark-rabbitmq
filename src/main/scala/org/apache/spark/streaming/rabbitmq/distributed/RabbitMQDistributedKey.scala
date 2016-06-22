@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,12 +15,24 @@
  */
 package org.apache.spark.streaming.rabbitmq.distributed
 
+import java.util.{Map => JMap}
+
 import org.apache.spark.streaming.rabbitmq.models.ExchangeAndRouting
 
 case class RabbitMQDistributedKey(
                                    queue: String,
                                    exchangeAndRouting: ExchangeAndRouting = ExchangeAndRouting(),
                                    connectionParams: Map[String, String] = Map.empty[String, String]
+                                 ) {
+
+  override def toString =
+    s"[Queue: $queue, ${exchangeAndRouting.toStringPretty()}]"
+}
+
+case class JavaRabbitMQDistributedKey(
+                                   queue: String,
+                                   exchangeAndRouting: ExchangeAndRouting = ExchangeAndRouting(),
+                                   connectionParams: JMap[String, String]
                                  ) {
 
   override def toString =

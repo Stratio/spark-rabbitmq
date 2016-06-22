@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +19,9 @@ import java.util.{List => JList, Map => JMap}
 
 import org.apache.spark.api.java.function.{Function => JFunction}
 import org.apache.spark.streaming.StreamingContext
-import org.apache.spark.streaming.api.java.{JavaReceiverInputDStream, JavaStreamingContext}
+import org.apache.spark.streaming.api.java.{JavaInputDStream, JavaReceiverInputDStream, JavaStreamingContext}
 import org.apache.spark.streaming.dstream.{InputDStream, ReceiverInputDStream}
-import org.apache.spark.streaming.rabbitmq.distributed.{RabbitMQDStream, RabbitMQDistributedKey}
+import org.apache.spark.streaming.rabbitmq.distributed.{JavaRabbitMQDistributedKey, RabbitMQDStream, RabbitMQDistributedKey}
 import org.apache.spark.streaming.rabbitmq.receiver.RabbitMQInputDStream
 
 import scala.collection.JavaConverters._
@@ -189,16 +189,22 @@ object RabbitMQUtils {
   def createJavaDistributedStream[R](
                                   javaStreamingContext: JavaStreamingContext,
                                   recordClass: Class[R],
-                                  distributedKeys: JList[RabbitMQDistributedKey],
+                                  distributedKeys: JList[JavaRabbitMQDistributedKey],
                                   rabbitMQParams: JMap[String, String],
                                   messageHandler: JFunction[Array[Byte], R]
-                                ): InputDStream[R] = {
+                                ): JavaInputDStream[R] = {
     implicit val recordCmt: ClassTag[R] = ClassTag(recordClass)
     val cleanedHandler = javaStreamingContext.sparkContext.clean(messageHandler.call _)
+    val scalaDistributedKeys = distributedKeys.asScala.map(distributedKey =>
+      RabbitMQDistributedKey(distributedKey.queue,
+        distributedKey.exchangeAndRouting,
+        distributedKey.connectionParams.asScala.toMap
+      )
+    )
 
     new RabbitMQDStream[R](
       javaStreamingContext.ssc,
-      distributedKeys.asScala,
+      scalaDistributedKeys,
       rabbitMQParams.asScala.toMap,
       cleanedHandler
     )
