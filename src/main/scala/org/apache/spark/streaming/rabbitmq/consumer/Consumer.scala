@@ -209,7 +209,8 @@ object Consumer extends Logging with ConsumerParamsUtils {
    */
   def closeConnections(): Unit =
     connections.foreach{case (key, connection) =>
-      connection.close()
+      if (connection.isOpen)
+        connection.close()
       connections.remove(key)
     }
 
