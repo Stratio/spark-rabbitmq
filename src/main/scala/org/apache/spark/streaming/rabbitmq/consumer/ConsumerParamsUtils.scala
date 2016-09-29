@@ -135,6 +135,9 @@ trait ConsumerParamsUtils {
     for {
       key <- MessageConsumerPropertiesKeys
       param <- params.get(key)
-    } yield (key, param)
+    } yield (key, key match {
+      case XmaxLength | XmessageTtl | Xexpires | XmaxLengthBytes | XmaxPriority => param.toInt.asInstanceOf[AnyRef]
+      case _ => param
+    })
   }.toMap
 }
