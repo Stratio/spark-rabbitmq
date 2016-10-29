@@ -17,6 +17,7 @@ package org.apache.spark.streaming.rabbitmq
 
 import java.util.{List => JList, Map => JMap}
 
+import com.rabbitmq.client.QueueingConsumer.Delivery
 import org.apache.spark.api.java.function.{Function => JFunction}
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.api.java.{JavaInputDStream, JavaReceiverInputDStream, JavaStreamingContext}
@@ -39,7 +40,7 @@ object RabbitMQUtils {
   def createStream[R: ClassTag](
                                  ssc: StreamingContext,
                                  params: Map[String, String],
-                                 messageHandler: Array[Byte] => R
+                                 messageHandler: Delivery => R
                                ): ReceiverInputDStream[R] = {
     new RabbitMQInputDStream[R](ssc, params, messageHandler)
   }
@@ -55,7 +56,7 @@ object RabbitMQUtils {
                     ssc: StreamingContext,
                     params: Map[String, String]
                   ): ReceiverInputDStream[Array[Byte]] = {
-    val messageHandler = (rawMessage: Array[Byte]) => rawMessage
+    val messageHandler = (rawMessage: Delivery) => rawMessage.getBody
 
     new RabbitMQInputDStream[Array[Byte]](ssc, params, messageHandler)
   }
@@ -71,7 +72,7 @@ object RabbitMQUtils {
                                                       ssc: StreamingContext,
                                                       params: Map[String, String]
                                                     ): ReceiverInputDStream[String] = {
-    val messageHandler = (rawMessage: Array[Byte]) => new Predef.String(rawMessage)
+    val messageHandler = (rawMessage: Delivery) => new Predef.String(rawMessage.getBody)
 
     new RabbitMQInputDStream[String](ssc, params, messageHandler)
   }
@@ -88,7 +89,7 @@ object RabbitMQUtils {
                            javaStreamingContext: JavaStreamingContext,
                            recordClass: Class[R],
                            params: JMap[String, String],
-                           messageHandler: JFunction[Array[Byte], R]
+                           messageHandler: JFunction[Delivery, R]
                          ): JavaReceiverInputDStream[R] = {
 
     implicit val recordCmt: ClassTag[R] = ClassTag(recordClass)
