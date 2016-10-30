@@ -118,7 +118,7 @@ object RabbitMQUtils {
                                             ssc: StreamingContext,
                                             distributedKeys: Seq[RabbitMQDistributedKey],
                                             rabbitMQParams: Map[String, String],
-                                            messageHandler: Array[Byte] => R
+                                            messageHandler: Delivery => R
                                           ): InputDStream[R] = {
     val cleanedHandler = ssc.sc.clean(messageHandler)
 
@@ -142,7 +142,7 @@ object RabbitMQUtils {
                                distributedKeys: Seq[RabbitMQDistributedKey],
                                rabbitMQParams: Map[String, String]
                              ): InputDStream[Array[Byte]] = {
-    val messageHandler = (rawMessage: Array[Byte]) => rawMessage
+    val messageHandler = (rawMessage: Delivery) => rawMessage.getBody
 
     new RabbitMQDStream[Array[Byte]](ssc, distributedKeys, rabbitMQParams, messageHandler)
   }
@@ -166,7 +166,7 @@ object RabbitMQUtils {
                                                                  distributedKeys: Seq[RabbitMQDistributedKey],
                                                                  rabbitMQParams: Map[String, String]
                                                                ): InputDStream[String] = {
-    val messageHandler = (rawMessage: Array[Byte]) => new Predef.String(rawMessage)
+    val messageHandler = (rawMessage: Delivery) => new Predef.String(rawMessage.getBody)
 
     new RabbitMQDStream[String](ssc, distributedKeys, rabbitMQParams, messageHandler)
   }
@@ -192,7 +192,7 @@ object RabbitMQUtils {
                                   recordClass: Class[R],
                                   distributedKeys: JList[JavaRabbitMQDistributedKey],
                                   rabbitMQParams: JMap[String, String],
-                                  messageHandler: JFunction[Array[Byte], R]
+                                  messageHandler: JFunction[Delivery, R]
                                 ): JavaInputDStream[R] = {
     implicit val recordCmt: ClassTag[R] = ClassTag(recordClass)
     val cleanedHandler = javaStreamingContext.sparkContext.clean(messageHandler.call _)
