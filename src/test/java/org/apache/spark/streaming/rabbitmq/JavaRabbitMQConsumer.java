@@ -15,6 +15,7 @@
  */
 package org.apache.spark.streaming.rabbitmq;
 
+import com.rabbitmq.client.QueueingConsumer.Delivery;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.streaming.Duration;
@@ -40,10 +41,10 @@ public final class JavaRabbitMQConsumer {
         params.put("userName", "guest");
         params.put("password", "guest");
 
-        Function<byte[], String> messageHandler = new Function<byte[], String>() {
+        Function<Delivery, String> messageHandler = new Function<Delivery, String>() {
 
-            public String call(byte[] message) {
-                return new String(message);
+            public String call(Delivery message) {
+                return new String(message.getBody());
             }
         };
 
