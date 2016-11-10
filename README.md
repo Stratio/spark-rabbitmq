@@ -87,8 +87,8 @@ In addition is possible to limit the number of consumed messages with the config
 
 This receiver has optimized the RDD functions count and countAprox.
 
-Each executor has one pool of connections and are reused on each streaming batch window in order to have better 
-performance. The actual kafka direct approach implemented by Spark does not have one pull of connections, this provoke 
+Each executor has one connection pool and are reused on each streaming batch window in order to have better 
+performance. The actual kafka direct approach implemented by Spark does not have one connection pool, this provoke 
 that on each iteration, the RDDs create a new kafka connection.
 
 This consumer has a limitation, the minimum storage level selected for this RabbitMQDStream is MEMORY_ONLY, the user 
