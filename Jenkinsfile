@@ -14,7 +14,7 @@ hose {
         ]        
       ]
       
-      ITPARAMETERS = '-Drabbitmq.hosts=%%RABBITMQ'
+    ITPARAMETERS = "-Drabbitmq.hosts=%%RABBITMQ"
       
     DEV = { config ->
             doCompile(config)
