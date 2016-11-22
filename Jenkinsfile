@@ -11,7 +11,7 @@ hose {
     ITSERVICES = [
         ['RABBITMQ': [
            'image': 'rabbitmq:3.6.1-management'           
-        ]        
+        ]],      
       ]
       
     ITPARAMETERS = "-Drabbitmq.hosts=%%RABBITMQ"
