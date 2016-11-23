@@ -15,6 +15,7 @@
  */
 package org.apache.spark.streaming.rabbitmq.receiver
 
+import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.rabbitmq.client._
 import org.apache.spark.Logging
 import org.apache.spark.storage.StorageLevel
@@ -87,12 +88,13 @@ class RabbitMQReceiver[R: ClassTag](
     try {
       log.info("RabbitMQ consumer start consuming data")
       while (!isStopped() && consumer.channel.isOpen) {
-        val delivery = queueConsumer.nextDelivery()
-
-        store(messageHandler(delivery.getBody))
-
-        if (sendingBasicAckFromParams(params))
-          consumer.sendBasicAck(delivery)
+        Try(queueConsumer.nextDelivery())
+        match {
+          case Success(delivery) =>
+            processDelivery(consumer, delivery)
+          case Failure(e) =>
+            throw new Exception(s"An error occured while getting next delivery: ${e.getLocalizedMessage}")
+        }
       }
     } catch {
       case unknown: Throwable =>
@@ -107,6 +109,22 @@ class RabbitMQReceiver[R: ClassTag](
           log.error(s"error on close consumer, ignoring it : ${e.getLocalizedMessage}")
       }
       restart("Trying to connect again")
+    }
+  }
+
+  private def processDelivery(consumer: Consumer, delivery:Delivery) {
+    Try(store(messageHandler(delivery.getBody)))
+    match {
+      case Success(data) =>
+        //Send ack if not set the auto ack property
+        if (sendingBasicAckFromParams(params))
+          consumer.sendBasicAck(delivery)
+      case Failure(e) =>
+        //Send noack if not set the auto ack property
+        if (sendingBasicAckFromParams(params)) {
+          log.warn(s"failed to process message. Sending noack ...")
+          consumer.sendBasicNAck(delivery)
+        }
     }
   }
 }
