@@ -6,7 +6,7 @@ hose {
     DEVTIMEOUT = 20
     RELEASETIMEOUT = 20
     FOSS = true
-    REPOSITORY = 'Spark-RabbitMQ'
+    REPOSITORY = 'spark-rabbitmq'
 
     ITSERVICES = [
         ['RABBITMQ': [
@@ -18,7 +18,7 @@ hose {
       
     DEV = { config ->
             doCompile(config)
-            doIT(config)
+            //doIT(config)
             doPackage(config)
                         
             parallel(QC: {
