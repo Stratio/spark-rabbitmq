@@ -25,6 +25,6 @@ hose {
                 doStaticAnalysis(config)
             }, DEPLOY: {
                 doDeploy(config)
-            }, failFast: lib.vars.FAILFAST)        
+            }, failFast: config.FAILFAST)        
     }
 }
