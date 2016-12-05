@@ -1,8 +1,8 @@
-@Library('libpipelines@feature/multibranch') _
+@Library('libpipelines@master') _
 
 hose {
     EMAIL = 'sparta'
-    MODULE = 'Spark-RabbitMQ'
+    MODULE = 'spark-rabbitmq'
     DEVTIMEOUT = 20
     RELEASETIMEOUT = 20
     FOSS = true
