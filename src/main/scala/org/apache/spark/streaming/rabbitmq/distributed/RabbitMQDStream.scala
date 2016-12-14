@@ -24,6 +24,7 @@ import org.apache.spark.streaming.scheduler.{RateController, StreamInputInfo}
 import org.apache.spark.streaming.{Seconds, StreamingContext, Time}
 import org.apache.spark.{Accumulator, Logging}
 import RabbitMQDStream._
+import com.rabbitmq.client.QueueingConsumer.Delivery
 
 import scala.reflect.ClassTag
 
@@ -32,7 +33,7 @@ class RabbitMQDStream[R: ClassTag](
                                     @transient val _ssc: StreamingContext,
                                     val distributedKeys: Seq[RabbitMQDistributedKey],
                                     val rabbitMQParams: Map[String, String],
-                                    messageHandler: Array[Byte] => R
+                                    messageHandler: Delivery => R
                                   ) extends InputDStream[R](_ssc) with Logging {
 
   private[streaming] override def name: String = s"RabbitMQ direct stream [$id]"
