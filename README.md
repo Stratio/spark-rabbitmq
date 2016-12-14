@@ -170,7 +170,6 @@ JavaReceiverInputDStream receiverStream = RabbitMQUtils.createJavaStream[R](java
 | exchangeName              | Exchange name                | Yes                                  |
 | exchangeType              | Exchange type                | Yes                                  |
 | routingKeys               | Routing keys comma separated | Yes                                  |
-| vHost                     | RabbitMQ vHost               | Yes                                  |
 | userName                  | RabbitMQ username            | Yes                                  |
 | password                  | RabbitMQ password            | Yes                                  |
 | durable                   | durable                      | Yes (default: true)                  |
