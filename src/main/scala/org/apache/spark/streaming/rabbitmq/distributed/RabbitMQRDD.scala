@@ -186,18 +186,10 @@ class RabbitMQRDD[R: ClassTag](
         if (finished || (maxMessagesPerPartition.isDefined && numMessages >= maxMessagesPerPartition.get)) {
           finishIterationAndReturn()
         } else {
-          Try {
-            val delivery = queueConsumer.nextDelivery()
-
-            (delivery, messageHandler(delivery))
-          } match {
-            case Success((delivery, data)) =>
-              //Send ack if not set the auto ack property
-              if (sendingBasicAckFromParams(rabbitParams))
-                consumer.sendBasicAck(delivery)
-              //Increment the number of messages consumed correctly
-              numMessages += 1
-              data
+          Try(queueConsumer.nextDelivery())
+          match {
+            case Success(delivery) =>
+              processDelivery(delivery)
             case Failure(e: ConsumerCancelledException) =>
               finishIterationAndReturn()
             case Failure(e) =>
@@ -208,6 +200,26 @@ class RabbitMQRDD[R: ClassTag](
               throw new SparkException(s"Error receiving data from RabbitMQ with error: ${e.getLocalizedMessage}")
           }
         }
+      }
+    }
+
+    private def processDelivery(delivery:Delivery): R = {
+      Try(messageHandler(delivery))
+      match {
+        case Success(data) =>
+          //Send ack if not set the auto ack property
+          if (sendingBasicAckFromParams(rabbitParams))
+            consumer.sendBasicAck(delivery)
+          //Increment the number of messages consumed correctly
+          numMessages += 1
+          data
+        case Failure(e) =>
+          //Send noack if not set the auto ack property
+          if (sendingBasicAckFromParams(rabbitParams)) {
+            log.warn(s"failed to process message. Sending noack ...")
+            consumer.sendBasicNAck(delivery)
+          }
+          null.asInstanceOf[R]
       }
     }
 

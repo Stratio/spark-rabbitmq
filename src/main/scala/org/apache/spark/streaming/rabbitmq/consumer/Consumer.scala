@@ -63,6 +63,13 @@ class Consumer(val channel: Channel, params: Map[String, String]) extends Loggin
     channel.basicAck(delivery.getEnvelope.getDeliveryTag,false)
 
   /**
+   * Send one basic noack, this ack correspond with the delivery param
+   * @param delivery The previous delivery that the queueConsumer send with one message consumed
+   */
+  def sendBasicNAck(delivery: Delivery): Unit =
+    channel.basicNack(delivery.getEnvelope.getDeliveryTag,false,true)
+
+  /**
    * Set the number of messages to one when the FairDispatch is called, this is necessary when we want more than one
    * consumer in the same queue
    */
@@ -244,7 +251,17 @@ object Consumer extends Logging with ConsumerParamsUtils {
 
     log.debug("Creating new channel")
 
-    Try(connection.createChannel)
+    val channel = Try(connection.createChannel)
+    channel match {
+      case Failure(e) =>
+        if (connection.isOpen) {
+          connection.close(320, "Closing connection as we can't create a channel with it ...")
+        }
+        log.warn(s"Failed to createChannel ${e.getMessage}. Remove connection ${addressesKey}")
+        connections.remove(addressesKey)
+      case _ =>
+    }
+    channel
   }
 
   private def addConnection(key: String, addresses: Array[Address]) : Connection = {
