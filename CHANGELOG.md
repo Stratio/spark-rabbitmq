@@ -1,6 +1,8 @@
 # Changelog
 
-Only listing significant user-visible, not internal code cleanups and minor bug fixes. 
+## 0.4.0 (October 2016)
+
+* Upgrade scala version to 2.11.8
 
 ## 0.3.0 (June 2016)
 
