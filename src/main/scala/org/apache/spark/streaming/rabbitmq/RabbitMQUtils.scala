@@ -17,6 +17,7 @@ package org.apache.spark.streaming.rabbitmq
 
 import java.util.{List => JList, Map => JMap}
 
+import com.rabbitmq.client.QueueingConsumer.Delivery
 import org.apache.spark.api.java.function.{Function => JFunction}
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.api.java.{JavaInputDStream, JavaReceiverInputDStream, JavaStreamingContext}
@@ -39,25 +40,9 @@ object RabbitMQUtils {
   def createStream[R: ClassTag](
                                  ssc: StreamingContext,
                                  params: Map[String, String],
-                                 messageHandler: Array[Byte] => R
+                                 messageHandler: Delivery => R
                                ): ReceiverInputDStream[R] = {
     new RabbitMQInputDStream[R](ssc, params, messageHandler)
-  }
-
-  /**
-   * Create an input stream that receives messages from a RabbitMQ.
-   * The result DStream is mapped to Array[Byte] type.
-   *
-   * @param ssc    StreamingContext object
-   * @param params RabbitMQ params
-   */
-  def createStream(
-                    ssc: StreamingContext,
-                    params: Map[String, String]
-                  ): ReceiverInputDStream[Array[Byte]] = {
-    val messageHandler = (rawMessage: Array[Byte]) => rawMessage
-
-    new RabbitMQInputDStream[Array[Byte]](ssc, params, messageHandler)
   }
 
   /**
@@ -71,7 +56,7 @@ object RabbitMQUtils {
                                                       ssc: StreamingContext,
                                                       params: Map[String, String]
                                                     ): ReceiverInputDStream[String] = {
-    val messageHandler = (rawMessage: Array[Byte]) => new Predef.String(rawMessage)
+    val messageHandler = (rawMessage: Delivery) => new Predef.String(rawMessage.getBody)
 
     new RabbitMQInputDStream[String](ssc, params, messageHandler)
   }
@@ -88,7 +73,7 @@ object RabbitMQUtils {
                            javaStreamingContext: JavaStreamingContext,
                            recordClass: Class[R],
                            params: JMap[String, String],
-                           messageHandler: JFunction[Array[Byte], R]
+                           messageHandler: JFunction[Delivery, R]
                          ): JavaReceiverInputDStream[R] = {
 
     implicit val recordCmt: ClassTag[R] = ClassTag(recordClass)
@@ -117,33 +102,11 @@ object RabbitMQUtils {
                                             ssc: StreamingContext,
                                             distributedKeys: Seq[RabbitMQDistributedKey],
                                             rabbitMQParams: Map[String, String],
-                                            messageHandler: Array[Byte] => R
+                                            messageHandler: Delivery => R
                                           ): InputDStream[R] = {
     val cleanedHandler = ssc.sc.clean(messageHandler)
 
     new RabbitMQDStream[R](ssc, distributedKeys, rabbitMQParams, cleanedHandler)
-  }
-
-  /**
-   * Create an input stream that receives messages from a RabbitMQ queue in distributed mode, each executor can
-   * consume messages from a different cluster or queue-exchange. Is possible to parallelize the consumer in one
-   * executor creating more channels, this is transparent to the user.
-   * The result DStream is mapped to Array[Byte] type.
-   *
-   * @param ssc             StreamingContext object
-   * @param distributedKeys Object that can contains the connections to the queues, it can be more than one and each
-   *                        tuple of queue, exchange, routing key and hosts can be one RabbitMQ independent
-   * @param rabbitMQParams  RabbitMQ params with queue options, spark options and consumer options
-   * @return The new DStream with the messages consumed and parsed to the Raw type (Array[Byte])
-   */
-  def createDistributedStream(
-                               ssc: StreamingContext,
-                               distributedKeys: Seq[RabbitMQDistributedKey],
-                               rabbitMQParams: Map[String, String]
-                             ): InputDStream[Array[Byte]] = {
-    val messageHandler = (rawMessage: Array[Byte]) => rawMessage
-
-    new RabbitMQDStream[Array[Byte]](ssc, distributedKeys, rabbitMQParams, messageHandler)
   }
 
   /**
@@ -165,7 +128,7 @@ object RabbitMQUtils {
                                                                  distributedKeys: Seq[RabbitMQDistributedKey],
                                                                  rabbitMQParams: Map[String, String]
                                                                ): InputDStream[String] = {
-    val messageHandler = (rawMessage: Array[Byte]) => new Predef.String(rawMessage)
+    val messageHandler = (rawMessage: Delivery) => new Predef.String(rawMessage.getBody)
 
     new RabbitMQDStream[String](ssc, distributedKeys, rabbitMQParams, messageHandler)
   }
@@ -191,7 +154,7 @@ object RabbitMQUtils {
                                   recordClass: Class[R],
                                   distributedKeys: JList[JavaRabbitMQDistributedKey],
                                   rabbitMQParams: JMap[String, String],
-                                  messageHandler: JFunction[Array[Byte], R]
+                                  messageHandler: JFunction[Delivery, R]
                                 ): JavaInputDStream[R] = {
     implicit val recordCmt: ClassTag[R] = ClassTag(recordClass)
     val cleanedHandler = javaStreamingContext.sparkContext.clean(messageHandler.call _)

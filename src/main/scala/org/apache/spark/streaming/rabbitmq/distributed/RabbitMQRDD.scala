@@ -37,7 +37,7 @@ class RabbitMQRDD[R: ClassTag](
                                 distributedKeys: Seq[RabbitMQDistributedKey],
                                 rabbitMQParams: Map[String, String],
                                 val countAccumulator: Accumulator[Long],
-                                messageHandler: Array[Byte] => R
+                                messageHandler: Delivery => R
                               ) extends RDD[R](sc, Nil) with Logging {
 
   @volatile private var totalCalculated: Option[Long] = None
@@ -204,7 +204,7 @@ class RabbitMQRDD[R: ClassTag](
     }
 
     private def processDelivery(delivery:Delivery): R = {
-      Try(messageHandler(delivery.getBody))
+      Try(messageHandler(delivery))
       match {
         case Success(data) =>
           //Send ack if not set the auto ack property
@@ -267,7 +267,7 @@ object RabbitMQRDD extends Logging {
                          distributedKeys: Seq[RabbitMQDistributedKey],
                          rabbitMQParams: Map[String, String],
                          countAccumulator: Accumulator[Long],
-                         messageHandler: Array[Byte] => R
+                         messageHandler: Delivery => R
                         ): RabbitMQRDD[R] = {
 
     new RabbitMQRDD[R](sc, distributedKeys, rabbitMQParams, countAccumulator, messageHandler)

@@ -29,7 +29,7 @@ class RabbitMQConsumerIT extends TemporalDataSuite {
 
   test("RabbitMQ Receiver should read all the records") {
 
-    val receiverStream = RabbitMQUtils.createStream[String](ssc, Map(
+    val receiverStream = RabbitMQUtils.createStream(ssc, Map(
       "hosts" -> hosts,
       "queueName" -> queueName,
       "exchangeName" -> exchangeName,

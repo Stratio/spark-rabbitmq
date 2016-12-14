@@ -33,7 +33,7 @@ private[rabbitmq]
 class RabbitMQInputDStream[R: ClassTag](
                                          @transient ssc_ : StreamingContext,
                                          params: Map[String, String],
-                                         messageHandler: Array[Byte] => R
+                                         messageHandler: Delivery => R
                                        ) extends ReceiverInputDStream[R](ssc_) with Logging {
 
   private val storageLevelParam =
@@ -49,7 +49,7 @@ private[rabbitmq]
 class RabbitMQReceiver[R: ClassTag](
                                      params: Map[String, String],
                                      storageLevel: StorageLevel,
-                                     messageHandler: Array[Byte] => R
+                                     messageHandler: Delivery => R
                                    )
   extends Receiver[R](storageLevel) with Logging {
 
@@ -113,7 +113,7 @@ class RabbitMQReceiver[R: ClassTag](
   }
 
   private def processDelivery(consumer: Consumer, delivery:Delivery) {
-    Try(store(messageHandler(delivery.getBody)))
+    Try(store(messageHandler(delivery)))
     match {
       case Success(data) =>
         //Send ack if not set the auto ack property

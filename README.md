@@ -8,7 +8,7 @@ from [RabbitMQ](https://www.rabbitmq.com/).
 
 ## Requirements
 
-This library requires Spark 1.5+, Scala 2.10+, RabbitMQ 3.5+
+This library requires Spark 1.5+, Scala 2.11+, RabbitMQ 3.5+
 
 ## Using the library
 
@@ -87,8 +87,8 @@ In addition is possible to limit the number of consumed messages with the config
 
 This receiver has optimized the RDD functions count and countAprox.
 
-Each executor has one pool of connections and are reused on each streaming batch window in order to have better 
-performance. The actual kafka direct approach implemented by Spark does not have one pull of connections, this provoke 
+Each executor has one connection pool and are reused on each streaming batch window in order to have better 
+performance. The actual kafka direct approach implemented by Spark does not have one connection pool, this provoke 
 that on each iteration, the RDDs create a new kafka connection.
 
 This consumer has a limitation, the minimum storage level selected for this RabbitMQDStream is MEMORY_ONLY, the user 
@@ -97,10 +97,6 @@ can't select NONE, because on each Spark action the RDD will be re-computed
 
 #### Scala API
 
-- Array(Byte)
-```
-val receiverStream = RabbitMQUtils.createDistributedStream(sparkStreamingContext, params, distributedKeys)
-```
 - String
 ```
 val receiverStream = RabbitMQUtils.createDistributedStream[String](sparkStreamingContext, params, distributedKeys)
@@ -139,10 +135,6 @@ The receiver extends one Akka Actor, this makes that the receiver-base approach 
 
 #### Scala API
 
-- Array(Byte)
-```
-val receiverStream = RabbitMQUtils.createStream(sparkStreamingContext, params)
-```
 - String
 ```
 val receiverStream = RabbitMQUtils.createStream[String](sparkStreamingContext, params)
@@ -170,7 +162,6 @@ JavaReceiverInputDStream receiverStream = RabbitMQUtils.createJavaStream[R](java
 | exchangeName              | Exchange name                | Yes                                  |
 | exchangeType              | Exchange type                | Yes                                  |
 | routingKeys               | Routing keys comma separated | Yes                                  |
-| vHost                     | RabbitMQ vHost               | Yes                                  |
 | userName                  | RabbitMQ username            | Yes                                  |
 | password                  | RabbitMQ password            | Yes                                  |
 | durable                   | durable                      | Yes (default: true)                  |
