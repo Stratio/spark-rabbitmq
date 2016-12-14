@@ -197,7 +197,7 @@ class RabbitMQRDD[R: ClassTag](
                 finished = true
                 closeIfNeeded()
               }
-              throw new SparkException(s"Error receiving data from RabbitMQ with error: ${e.getLocalizedMessage}")
+              throw new SparkException(s"Error receiving data from RabbitMQ with error: ${e.getLocalizedMessage}", e)
           }
         }
       }
@@ -216,7 +216,7 @@ class RabbitMQRDD[R: ClassTag](
         case Failure(e) =>
           //Send noack if not set the auto ack property
           if (sendingBasicAckFromParams(rabbitParams)) {
-            log.warn(s"failed to process message. Sending noack ...")
+            log.warn(s"failed to process message. Sending noack ...", e)
             consumer.sendBasicNAck(delivery)
           }
           null.asInstanceOf[R]

@@ -93,12 +93,14 @@ class RabbitMQReceiver[R: ClassTag](
           case Success(delivery) =>
             processDelivery(consumer, delivery)
           case Failure(e) =>
-            throw new Exception(s"An error occured while getting next delivery: ${e.getLocalizedMessage}")
+            throw new Exception(s"An error happen while getting next delivery: ${e.getLocalizedMessage}", e)
         }
       }
     } catch {
       case unknown: Throwable =>
         log.error("Got this unknown exception: " + unknown, unknown)
+      case exception: Exception =>
+        log.error("Got this Exception: " + exception, exception)
     }
     finally {
       log.info("it has been stopped")
@@ -106,7 +108,7 @@ class RabbitMQReceiver[R: ClassTag](
         consumer.close()
       } catch {
         case e: Throwable =>
-          log.error(s"error on close consumer, ignoring it : ${e.getLocalizedMessage}")
+          log.error(s"error on close consumer, ignoring it : ${e.getLocalizedMessage}", e)
       }
       restart("Trying to connect again")
     }
@@ -122,7 +124,7 @@ class RabbitMQReceiver[R: ClassTag](
       case Failure(e) =>
         //Send noack if not set the auto ack property
         if (sendingBasicAckFromParams(params)) {
-          log.warn(s"failed to process message. Sending noack ...")
+          log.warn(s"failed to process message. Sending noack ...", e)
           consumer.sendBasicNAck(delivery)
         }
     }
