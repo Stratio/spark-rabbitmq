@@ -47,22 +47,6 @@ object RabbitMQUtils {
 
   /**
    * Create an input stream that receives messages from a RabbitMQ.
-   * The result DStream is mapped to Array[Byte] type.
-   *
-   * @param ssc    StreamingContext object
-   * @param params RabbitMQ params
-   */
-  def createStream(
-                    ssc: StreamingContext,
-                    params: Map[String, String]
-                  ): ReceiverInputDStream[Array[Byte]] = {
-    val messageHandler = (rawMessage: Delivery) => rawMessage.getBody
-
-    new RabbitMQInputDStream[Array[Byte]](ssc, params, messageHandler)
-  }
-
-  /**
-   * Create an input stream that receives messages from a RabbitMQ.
    * The result DStream is mapped to String type
    *
    * @param ssc    StreamingContext object
@@ -123,28 +107,6 @@ object RabbitMQUtils {
     val cleanedHandler = ssc.sc.clean(messageHandler)
 
     new RabbitMQDStream[R](ssc, distributedKeys, rabbitMQParams, cleanedHandler)
-  }
-
-  /**
-   * Create an input stream that receives messages from a RabbitMQ queue in distributed mode, each executor can
-   * consume messages from a different cluster or queue-exchange. Is possible to parallelize the consumer in one
-   * executor creating more channels, this is transparent to the user.
-   * The result DStream is mapped to Array[Byte] type.
-   *
-   * @param ssc             StreamingContext object
-   * @param distributedKeys Object that can contains the connections to the queues, it can be more than one and each
-   *                        tuple of queue, exchange, routing key and hosts can be one RabbitMQ independent
-   * @param rabbitMQParams  RabbitMQ params with queue options, spark options and consumer options
-   * @return The new DStream with the messages consumed and parsed to the Raw type (Array[Byte])
-   */
-  def createDistributedStream(
-                               ssc: StreamingContext,
-                               distributedKeys: Seq[RabbitMQDistributedKey],
-                               rabbitMQParams: Map[String, String]
-                             ): InputDStream[Array[Byte]] = {
-    val messageHandler = (rawMessage: Delivery) => rawMessage.getBody
-
-    new RabbitMQDStream[Array[Byte]](ssc, distributedKeys, rabbitMQParams, messageHandler)
   }
 
   /**
