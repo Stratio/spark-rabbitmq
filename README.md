@@ -97,10 +97,6 @@ can't select NONE, because on each Spark action the RDD will be re-computed
 
 #### Scala API
 
-- Array(Byte)
-```
-val receiverStream = RabbitMQUtils.createDistributedStream(sparkStreamingContext, params, distributedKeys)
-```
 - String
 ```
 val receiverStream = RabbitMQUtils.createDistributedStream[String](sparkStreamingContext, params, distributedKeys)
@@ -139,10 +135,6 @@ The receiver extends one Akka Actor, this makes that the receiver-base approach 
 
 #### Scala API
 
-- Array(Byte)
-```
-val receiverStream = RabbitMQUtils.createStream(sparkStreamingContext, params)
-```
 - String
 ```
 val receiverStream = RabbitMQUtils.createStream[String](sparkStreamingContext, params)
