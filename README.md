@@ -8,7 +8,7 @@ from [RabbitMQ](https://www.rabbitmq.com/).
 
 ## Requirements
 
-This library requires Spark 1.5+, Scala 2.10+, RabbitMQ 3.5+
+This library requires Spark 1.5+, Scala 2.11+, RabbitMQ 3.5+
 
 ## Using the library
 
@@ -170,7 +170,6 @@ JavaReceiverInputDStream receiverStream = RabbitMQUtils.createJavaStream[R](java
 | exchangeName              | Exchange name                | Yes                                  |
 | exchangeType              | Exchange type                | Yes                                  |
 | routingKeys               | Routing keys comma separated | Yes                                  |
-| vHost                     | RabbitMQ vHost               | Yes                                  |
 | userName                  | RabbitMQ username            | Yes                                  |
 | password                  | RabbitMQ password            | Yes                                  |
 | durable                   | durable                      | Yes (default: true)                  |

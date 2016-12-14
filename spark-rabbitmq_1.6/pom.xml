@@ -69,7 +69,6 @@
     </build>
 
     <properties>
-        <scala.binary.version>2.10</scala.binary.version>
         <spark.version>1.6.1</spark.version>
     </properties>
 
