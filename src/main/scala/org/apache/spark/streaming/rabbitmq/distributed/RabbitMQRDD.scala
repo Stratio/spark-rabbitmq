@@ -17,6 +17,7 @@ package org.apache.spark.streaming.rabbitmq.distributed
 
 import akka.actor.ActorSystem
 import com.rabbitmq.client.ConsumerCancelledException
+import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.typesafe.config.ConfigFactory
 import org.apache.spark.partial.{BoundedDouble, CountEvaluator, PartialResult}
 import org.apache.spark.rdd.RDD
@@ -36,7 +37,7 @@ class RabbitMQRDD[R: ClassTag](
                                 distributedKeys: Seq[RabbitMQDistributedKey],
                                 rabbitMQParams: Map[String, String],
                                 val countAccumulator: Accumulator[Long],
-                                messageHandler: Array[Byte] => R
+                                messageHandler: Delivery => R
                               ) extends RDD[R](sc, Nil) with Logging {
 
   @volatile private var totalCalculated: Option[Long] = None
@@ -188,7 +189,7 @@ class RabbitMQRDD[R: ClassTag](
           Try {
             val delivery = queueConsumer.nextDelivery()
 
-            (delivery, messageHandler(delivery.getBody))
+            (delivery, messageHandler(delivery))
           } match {
             case Success((delivery, data)) =>
               //Send ack if not set the auto ack property
@@ -254,7 +255,7 @@ object RabbitMQRDD extends Logging {
                          distributedKeys: Seq[RabbitMQDistributedKey],
                          rabbitMQParams: Map[String, String],
                          countAccumulator: Accumulator[Long],
-                         messageHandler: Array[Byte] => R
+                         messageHandler: Delivery => R
                         ): RabbitMQRDD[R] = {
 
     new RabbitMQRDD[R](sc, distributedKeys, rabbitMQParams, countAccumulator, messageHandler)

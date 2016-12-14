@@ -15,6 +15,7 @@
  */
 package org.apache.spark.streaming.rabbitmq.receiver
 
+import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.rabbitmq.client._
 import org.apache.spark.Logging
 import org.apache.spark.storage.StorageLevel
@@ -32,7 +33,7 @@ private[rabbitmq]
 class RabbitMQInputDStream[R: ClassTag](
                                          @transient ssc_ : StreamingContext,
                                          params: Map[String, String],
-                                         messageHandler: Array[Byte] => R
+                                         messageHandler: Delivery => R
                                        ) extends ReceiverInputDStream[R](ssc_) with Logging {
 
   private val storageLevelParam =
@@ -48,7 +49,7 @@ private[rabbitmq]
 class RabbitMQReceiver[R: ClassTag](
                                      params: Map[String, String],
                                      storageLevel: StorageLevel,
-                                     messageHandler: Array[Byte] => R
+                                     messageHandler: Delivery => R
                                    )
   extends Receiver[R](storageLevel) with Logging {
 
@@ -89,7 +90,7 @@ class RabbitMQReceiver[R: ClassTag](
       while (!isStopped() && consumer.channel.isOpen) {
         val delivery = queueConsumer.nextDelivery()
 
-        store(messageHandler(delivery.getBody))
+        store(messageHandler(delivery))
 
         if (sendingBasicAckFromParams(params))
           consumer.sendBasicAck(delivery)
