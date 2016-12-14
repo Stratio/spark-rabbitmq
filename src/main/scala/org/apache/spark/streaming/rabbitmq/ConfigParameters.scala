@@ -63,13 +63,13 @@ object ConfigParameters {
   /**
    * Message Consumed properties
    */
-  private val XmaxLength = "x-max-length"
-  private val XmessageTtl = "x-message-ttl"
-  private val Xexpires = "x-expires"
-  private val XmaxLengthBytes = "x-max-length-bytes"
-  private val XDeadLetterExchange = "x-dead-letter-exchange"
-  private val XdeadLetterRoutingKey = "x-dead-letter-routing-key"
-  private val XmaxPriority = "x-max-priority"
+  val XmaxLength = "x-max-length"
+  val XmessageTtl = "x-message-ttl"
+  val Xexpires = "x-expires"
+  val XmaxLengthBytes = "x-max-length-bytes"
+  val XDeadLetterExchange = "x-dead-letter-exchange"
+  val XdeadLetterRoutingKey = "x-dead-letter-routing-key"
+  val XmaxPriority = "x-max-priority"
   val MessageConsumerPropertiesKeys =
     List(XmaxLength, XmessageTtl, Xexpires, XmaxLengthBytes, XDeadLetterExchange, XdeadLetterRoutingKey, XmaxPriority)
 
