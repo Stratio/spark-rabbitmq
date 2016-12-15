@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 (upcoming)
+## 0.5.0 (December 15, 2016)
 
 * Upgrade to Spark 2.0
 * Optimized accumulators with AccumulatorV2 API
