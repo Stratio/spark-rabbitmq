@@ -1,5 +1,5 @@
-[![Coverage Status](https://coveralls.io/repos/github/Stratio/RabbitMQ-Receiver/badge.svg?branch=master)]
-(https://coveralls.io/github/Stratio/RabbitMQ-Receiver?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/Stratio/spark-rabbitmq/badge.svg?branch=master)]
+(https://coveralls.io/github/Stratio/spark-rabbitmq?branch=master)
 
 # RabbitMQ Spark Streaming Receiver
 
