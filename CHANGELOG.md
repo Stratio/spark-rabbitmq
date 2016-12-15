@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 (upcoming)
+
+* Pending changelog
+
 ## 0.4.0
 
 * Upgrade scala version to 2.11.8
