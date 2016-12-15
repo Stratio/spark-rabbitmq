@@ -1,5 +1,5 @@
 ITSERVICES:
   - RABBITMQ:
-      image: rabbitmq:3.6.1-management 
+      image: rabbitmq:3-management
 ITPARAMETERS: >
       -Drabbitmq.hosts=%%RABBITMQ

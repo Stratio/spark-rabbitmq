@@ -82,7 +82,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <scala.version>2.11.8</scala.version>
         <scala.binary.version>2.11</scala.binary.version>
-        <rabbitmq.version>3.6.1</rabbitmq.version>
+        <rabbitmq.version>3.6.6</rabbitmq.version>
         <joda.version>2.8.2</joda.version>
         <scalatest.version>2.2.2</scalatest.version>
         <junit.version>4.8.1</junit.version>

@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.4.0 (December 2016)
+## 0.4.0
 
 * Upgrade scala version to 2.11.8
+* Upgrade to rabbitMQ library version 3.6.6
 * Removed Array[Byte] in createStream API
 * The library now run with Delivery message of RabbitMQ
 * Added tests with Delivery message option

@@ -10,7 +10,7 @@ hose {
 
     ITSERVICES = [
         ['RABBITMQ': [
-           'image': 'rabbitmq:3.6.1-management'           
+           'image': 'rabbitmq:3-management'
         ]],      
       ]
       
@@ -18,7 +18,7 @@ hose {
       
     DEV = { config ->
             doCompile(config)
-            //doIT(config)
+            doIT(config)
             doPackage(config)
                         
             parallel(QC: {
