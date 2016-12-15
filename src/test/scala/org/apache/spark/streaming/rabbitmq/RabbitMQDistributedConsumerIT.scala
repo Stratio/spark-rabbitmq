@@ -82,7 +82,7 @@ class RabbitMQDistributedConsumerIT extends TemporalDataSuite {
           }
       )
 
-      val totalEvents = ssc.sparkContext.accumulator(0L, "Number of events received")
+      val totalEvents = ssc.sparkContext.longAccumulator("Number of events received")
 
       // Start up the receiver.
       distributedStream.start()
@@ -93,7 +93,7 @@ class RabbitMQDistributedConsumerIT extends TemporalDataSuite {
           val count = rdd.count()
           // Do something with this message
           println(s"EVENTS COUNT : \t $count")
-          totalEvents += count
+          totalEvents.add(count)
           //rdd.collect().foreach(event => print(s"${event.toString}, "))
         } else println("RDD is empty")
         println(s"TOTAL EVENTS : \t $totalEvents")
