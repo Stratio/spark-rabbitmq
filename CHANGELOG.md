@@ -4,7 +4,7 @@
 
 * Pending changelog
 
-## 0.4.0
+## 0.4.0 (upcoming)
 
 * Upgrade scala version to 2.11.8
 * Upgrade to rabbitMQ library version 3.6.6
