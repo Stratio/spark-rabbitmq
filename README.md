@@ -8,7 +8,7 @@ from [RabbitMQ](https://www.rabbitmq.com/).
 
 ## Requirements
 
-This library requires Spark 1.5+, Scala 2.11+, RabbitMQ 3.5+
+This library requires Spark 2.0+, Scala 2.11+, RabbitMQ 3.5+
 
 ## Using the library
 
@@ -42,15 +42,7 @@ This library includes two implementations for consuming messages from RabbitMQ w
 
 ### Build
 
-There are two modules to package with different versions of Spark
-
-- To package it with Spark-1.5:
-
-`mvn clean package -pl com.stratio.receiver:spark-rabbitmq_1.5`
-
-- To package it with Spark-1.6 (default):
-
-`mvn clean package -pl com.stratio.receiver:spark-rabbitmq_1.6`
+`mvn clean package`
 
 
 ### Distributed Approach

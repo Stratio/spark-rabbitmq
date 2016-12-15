@@ -2,7 +2,9 @@
 
 ## 0.5.0 (upcoming)
 
-* Pending changelog
+* Upgrade to Spark 2.0
+* Optimized accumulators with AccumulatorV2 API
+* Removed crossbuild with Spark 1.6 and 1.5
 
 ## 0.4.0 (December 15, 2016)
 
