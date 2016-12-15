@@ -204,7 +204,7 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <configuration>
                     <includes>
-                        <include>org/apache/spark/streaming/datasource/**</include>
+                        <include>org/apache/spark/streaming/rabbitmq/**</include>
                     </includes>
                 </configuration>
             </plugin>
