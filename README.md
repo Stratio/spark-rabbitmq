@@ -27,7 +27,7 @@ The first one is to add the next dependency in your pom.xml:
 The other one is to clone the full repository and build the project:
 
 ```
-git clone https://github.com/Stratio/RabbitMQ-Receiver.git
+git clone https://github.com/Stratio/spark-rabbitmq.git
 mvn clean install
 ```
 
