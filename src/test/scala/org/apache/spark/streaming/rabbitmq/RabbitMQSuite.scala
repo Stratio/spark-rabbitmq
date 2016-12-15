@@ -15,7 +15,7 @@
  */
 package org.apache.spark.streaming.rabbitmq
 
-import org.apache.spark.Logging
+import org.apache.spark.internal.Logging
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.{TimeLimitedTests, Timeouts}
 import org.scalatest.time.SpanSugar._

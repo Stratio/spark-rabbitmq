@@ -28,7 +28,7 @@ import java.util.Map;
 
 public final class JavaRabbitMQConsumer {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 
         SparkConf sparkConf = new SparkConf().setAppName("JavaRabbitMQConsumer").setMaster("local[2]");
         JavaStreamingContext jssc = new JavaStreamingContext(sparkConf, new Duration(10000));

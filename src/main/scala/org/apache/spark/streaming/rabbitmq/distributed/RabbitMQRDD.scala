@@ -19,12 +19,13 @@ import akka.actor.ActorSystem
 import com.rabbitmq.client.ConsumerCancelledException
 import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.typesafe.config.ConfigFactory
+import org.apache.spark.internal.Logging
 import org.apache.spark.partial.{BoundedDouble, CountEvaluator, PartialResult}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.rabbitmq.consumer.Consumer
 import org.apache.spark.streaming.rabbitmq.consumer.Consumer._
-import org.apache.spark.util.{NextIterator, Utils}
-import org.apache.spark.{Accumulator, Logging, Partition, SparkContext, SparkException, TaskContext}
+import org.apache.spark.util.{LongAccumulator, NextIterator, Utils}
+import org.apache.spark.{Partition, SparkContext, SparkException, TaskContext}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
@@ -36,7 +37,7 @@ class RabbitMQRDD[R: ClassTag](
                                 @transient sc: SparkContext,
                                 distributedKeys: Seq[RabbitMQDistributedKey],
                                 rabbitMQParams: Map[String, String],
-                                val countAccumulator: Accumulator[Long],
+                                val countAccumulator: LongAccumulator,
                                 messageHandler: Delivery => R
                               ) extends RDD[R](sc, Nil) with Logging {
 
@@ -203,7 +204,7 @@ class RabbitMQRDD[R: ClassTag](
       }
     }
 
-    private def processDelivery(delivery:Delivery): R = {
+    private def processDelivery(delivery: Delivery): R = {
       Try(messageHandler(delivery))
       match {
         case Success(data) =>
@@ -226,7 +227,7 @@ class RabbitMQRDD[R: ClassTag](
     override def close(): Unit = {
       //Increment the accumulator to control in the driver the number of messages consumed by all executors, this is
       // used to report in the Spark UI this number for the next iteration
-      countAccumulator += numMessages
+      countAccumulator.add(numMessages)
       log.info(s"******* Received $numMessages messages by Partition : ${part.index}  before close Channel ******")
       //Close the scheduler and the channel in the consumer
       scheduleProcess.cancel()
@@ -266,7 +267,7 @@ object RabbitMQRDD extends Logging {
   def apply[R: ClassTag](sc: SparkContext,
                          distributedKeys: Seq[RabbitMQDistributedKey],
                          rabbitMQParams: Map[String, String],
-                         countAccumulator: Accumulator[Long],
+                         countAccumulator: LongAccumulator,
                          messageHandler: Delivery => R
                         ): RabbitMQRDD[R] = {
 
@@ -289,6 +290,7 @@ object RabbitMQRDD extends Logging {
       system.foreach(actorSystem => {
         log.debug(s"Shutting down actor system: ${actorSystem.name}")
         actorSystem.shutdown()
+        system = None
       })
     }
   }

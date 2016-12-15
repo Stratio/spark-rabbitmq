@@ -15,16 +15,17 @@
  */
 package org.apache.spark.streaming.rabbitmq.distributed
 
+import com.rabbitmq.client.QueueingConsumer.Delivery
+import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.dstream.InputDStream
 import org.apache.spark.streaming.rabbitmq.ConfigParameters._
 import org.apache.spark.streaming.rabbitmq.consumer.Consumer
+import org.apache.spark.streaming.rabbitmq.distributed.RabbitMQDStream._
 import org.apache.spark.streaming.scheduler.rate.RateEstimator
 import org.apache.spark.streaming.scheduler.{RateController, StreamInputInfo}
 import org.apache.spark.streaming.{Seconds, StreamingContext, Time}
-import org.apache.spark.{Accumulator, Logging}
-import RabbitMQDStream._
-import com.rabbitmq.client.QueueingConsumer.Delivery
+import org.apache.spark.util.LongAccumulator
 
 import scala.reflect.ClassTag
 
@@ -99,7 +100,7 @@ class RabbitMQDStream[R: ClassTag](
   /**
    * @return The number of partitions for the RDD created by this DStream
    */
-  private[streaming] def getNumPartitions : Int = {
+  private[streaming] def getNumPartitions: Int = {
     val parallelism = Consumer.getParallelism(rabbitMQParams)
     val keys = if (distributedKeys.nonEmpty)
       distributedKeys
@@ -130,7 +131,7 @@ class RabbitMQDStream[R: ClassTag](
       maxMessagesCalculation.fold(Map.empty[String, String]) { case (_, maxMessages) =>
         Map(MaxMessagesPerPartition -> maxMessages.toString)
       }
-    val countAccumulator = ssc.sparkContext.accumulator(0L, id.toString)
+    val countAccumulator: LongAccumulator = ssc.sparkContext.longAccumulator(id.toString)
     val rdd = RabbitMQRDD[R](context.sparkContext, distributedKeys, rddParams, countAccumulator, messageHandler)
 
     //publish data in Spark UI
@@ -178,7 +179,7 @@ private[streaming] object RabbitMQDStream {
   /**
    * Only for report information to Spark UI
    */
-  @volatile var countTotalDStream: Option[Accumulator[Long]] = None
+  @volatile var countTotalDStream: Option[LongAccumulator] = None
   @volatile var metadataDStream: Map[String, Any] = Map.empty[String, Any]
 }
 
