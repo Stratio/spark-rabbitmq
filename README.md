@@ -149,7 +149,7 @@ JavaReceiverInputDStream receiverStream = RabbitMQUtils.createJavaStream[R](java
 | Parameter                 | Description                  | Optional                             |
 |---------------------------|------------------------------|--------------------------------------|
 | hosts                     | RabbitMQ hosts               | Yes (default: localhost)             |
-| virtualHosts              | RabbitMQ virtual Host        | Yes                                  |
+| virtualHost               | RabbitMQ virtual Host        | Yes                                  |
 | queueName                 | Queue name                   | Yes                                  |
 | exchangeName              | Exchange name                | Yes                                  |
 | exchangeType              | Exchange type                | Yes                                  |
@@ -189,3 +189,4 @@ software distributed under the License is distributed on an
 KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
+
