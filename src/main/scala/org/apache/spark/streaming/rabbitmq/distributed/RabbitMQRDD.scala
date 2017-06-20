@@ -276,7 +276,7 @@ object RabbitMQRDD extends Logging {
 
   def getActorSystem: ActorSystem = {
     synchronized {
-      if (system.isEmpty || (system.isDefined && system.get.isTerminated))
+      if (system.isEmpty || (system.isDefined && system.get.whenTerminated.isCompleted))
         system = Option(akka.actor.ActorSystem(
           s"system-${System.currentTimeMillis()}",
           ConfigFactory.load(ConfigFactory.parseString("akka.daemonic=on"))
@@ -289,7 +289,7 @@ object RabbitMQRDD extends Logging {
     synchronized {
       system.foreach(actorSystem => {
         log.debug(s"Shutting down actor system: ${actorSystem.name}")
-        actorSystem.shutdown()
+        actorSystem.terminate()
         system = None
       })
     }
