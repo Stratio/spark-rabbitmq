@@ -33,7 +33,8 @@ object ConfigParameters {
   val VirtualHostKey = "virtualHost"
   val UserNameKey = "userName"
   val PasswordKey = "password"
-  val ConnectionKeys = List(HostsKey, VirtualHostKey, UserNameKey, PasswordKey)
+  val SslProtocolKey = "sslProtocol"
+  val ConnectionKeys = List(HostsKey, VirtualHostKey, UserNameKey, PasswordKey, SslProtocolKey)
 
   /**
    * Queue Connection properties
@@ -59,6 +60,7 @@ object ConfigParameters {
   val AutoAckType = "auto"
   val DefaultHost = "localhost"
   val DefaultPrefetchCount = 1
+  val DefaultSslProtocol = null
 
   /**
    * Message Consumed properties

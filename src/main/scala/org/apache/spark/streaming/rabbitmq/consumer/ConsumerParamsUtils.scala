@@ -73,6 +73,14 @@ trait ConsumerParamsUtils {
     ExchangeAndRouting(exchangeName, exchangeType, routingKeys)
   }
 
+  def useSslConnection(params: Map[String, String]): Boolean = {
+    params.get(SslProtocolKey).orNull != null
+  }
+
+  def getSslProtocol(params: Map[String, String]): String = {
+    params.getOrElse(SslProtocolKey, DefaultSslProtocol)
+  }
+
   /**
    * Queue Properties
    */

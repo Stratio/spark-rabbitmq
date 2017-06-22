@@ -247,6 +247,9 @@ object Consumer extends Logging with ConsumerParamsUtils {
 
   private def getChannel(params: Map[String, String]): Try[Channel] = {
     val addresses = getAddresses(params)
+    if (useSslConnection(params)) {
+      factory.useSslProtocol(getSslProtocol(params))
+    }
     val addressesKey = addresses.mkString(",")
     val connection = connections.getOrElse(addressesKey, addConnection(addressesKey, addresses))
 
