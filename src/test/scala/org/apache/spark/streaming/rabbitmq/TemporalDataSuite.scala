@@ -168,6 +168,6 @@ private[rabbitmq] trait TemporalDataSuite extends RabbitMQSuite with BeforeAndAf
   }
 
   override def afterAll : Unit = {
-    system.shutdown()
+    system.terminate()
   }
 }
