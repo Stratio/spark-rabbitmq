@@ -150,6 +150,7 @@ JavaReceiverInputDStream receiverStream = RabbitMQUtils.createJavaStream[R](java
 |---------------------------|------------------------------|--------------------------------------|
 | hosts                     | RabbitMQ hosts               | Yes (default: localhost)             |
 | virtualHosts              | RabbitMQ virtual Host        | Yes                                  |
+| sslProtocol               | SSL Protocol                 | Yes (default: No SSL connection)     |
 | queueName                 | Queue name                   | Yes                                  |
 | exchangeName              | Exchange name                | Yes                                  |
 | exchangeType              | Exchange type                | Yes                                  |

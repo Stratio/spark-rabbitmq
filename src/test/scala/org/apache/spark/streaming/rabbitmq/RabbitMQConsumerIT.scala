@@ -27,16 +27,30 @@ class RabbitMQConsumerIT extends TemporalDataSuite {
 
   override val exchangeName = s"$configExchangeName-${this.getClass().getName()}-${UUID.randomUUID().toString}"
 
-  test("RabbitMQ Receiver should read all the records") {
+  test("RabbitMQ Receiver should read all the records without SSL") {
+    testReadRecords(5672, null)
+  }
 
+  test("RabbitMQ Receiver should read all the records with SSL") {
+    testReadRecords(5671, "tlsv1.2")
+  }
+
+  private def hostsWithPort(port: Int): String = hosts
+    .split(",")
+    .map(h => if(h.contains(":")) h.split(":")(0) else h)
+    .map(_ + ":" + port)
+    .mkString(",")
+
+  private def testReadRecords(port: Int, ssl: String): Unit = {
     val receiverStream = RabbitMQUtils.createStream(ssc, Map(
-      "hosts" -> hosts,
+      "hosts" -> hostsWithPort(port),
       "queueName" -> queueName,
       "exchangeName" -> exchangeName,
       "exchangeType" -> exchangeType,
       "vHost" -> vHost,
       "userName" -> userName,
-      "password" -> password
+      "password" -> password,
+      "sslProtocol" -> ssl
     ))
     val totalEvents = ssc.sparkContext.longAccumulator("My Accumulator")
 
