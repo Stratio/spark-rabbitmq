@@ -217,9 +217,12 @@ object Consumer extends Logging with ConsumerParamsUtils {
    */
   def closeConnections(): Unit =
     connections.foreach{case (key, connection) =>
-      if (connection.isOpen)
-        connection.close()
-      connections.remove(key)
+      try {
+        if (connection.isOpen)
+          connection.close(DefaultCodeClose.toInt, s"Closing connection with key: $key")
+      } finally {
+        connections.remove(key)
+      }
     }
 
   private def setVirtualHost(params: Map[String, String]): Unit = {
@@ -248,26 +251,37 @@ object Consumer extends Logging with ConsumerParamsUtils {
   private def getChannel(params: Map[String, String]): Try[Channel] = {
     val addresses = getAddresses(params)
     val addressesKey = addresses.mkString(",")
-    val connection = connections.getOrElse(addressesKey, addConnection(addressesKey, addresses))
+    val connection = {
+      if(connections.contains(addressesKey))
+        connections(addressesKey)
+      else addConnection(addressesKey, addresses)
+    }
 
     log.debug("Creating new channel")
 
     val channel = Try(connection.createChannel)
     channel match {
       case Failure(e) =>
-        if (connection.isOpen) {
-          connection.close(320, "Closing connection as we can't create a channel with it ...")
+        try {
+          if (connection.isOpen) {
+            connection.close(
+              params.getOrElse(CodeClose, DefaultCodeClose).toInt,
+              "Closing connection as we can't create a channel with it ..."
+            )
+          }
+        } finally {
+          log.warn(s"Failed to createChannel ${e.getMessage}. Remove connection $addressesKey")
+          connections.remove(addressesKey)
         }
-        log.warn(s"Failed to createChannel ${e.getMessage}. Remove connection ${addressesKey}")
-        connections.remove(addressesKey)
       case _ =>
+        log.debug("Channel created correctly")
     }
     channel
   }
 
   private def addConnection(key: String, addresses: Array[Address]) : Connection = {
     val conn = factory.newConnection(addresses)
-    connections.putIfAbsent(key, conn)
+    connections.put(key, conn)
     conn
   }
 }

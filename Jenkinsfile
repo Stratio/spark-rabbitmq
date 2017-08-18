@@ -3,8 +3,8 @@
 hose {
     EMAIL = 'sparta'
     MODULE = 'spark-rabbitmq'
-    DEVTIMEOUT = 20
-    RELEASETIMEOUT = 20
+    DEVTIMEOUT = 70
+    RELEASETIMEOUT = 40
     FOSS = true
     REPOSITORY = 'spark-rabbitmq'
 
@@ -17,8 +17,11 @@ hose {
     ITPARAMETERS = "-Drabbitmq.hosts=%%RABBITMQ"
       
     DEV = { config ->
+
             doCompile(config)
+
             doIT(config)
+
             doPackage(config)
                         
             parallel(QC: {
