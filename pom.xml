@@ -23,7 +23,7 @@
     <parent>
         <groupId>com.stratio</groupId>
         <artifactId>parent</artifactId>
-        <version>0.8.0</version>
+        <version>0.9.0</version>
     </parent>
 
     <groupId>com.stratio.receiver</groupId>
