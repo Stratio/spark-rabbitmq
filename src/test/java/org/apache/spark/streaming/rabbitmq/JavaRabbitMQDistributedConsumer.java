@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +15,7 @@
  */
 package org.apache.spark.streaming.rabbitmq;
 
+import com.rabbitmq.client.QueueingConsumer.Delivery;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.streaming.Duration;
@@ -31,7 +32,7 @@ import java.util.List;
 
 public final class JavaRabbitMQDistributedConsumer implements Serializable {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 
         SparkConf sparkConf = new SparkConf().setAppName("JavaRabbitMQConsumer").setMaster("local[2]");
         JavaStreamingContext jssc = new JavaStreamingContext(sparkConf, new Duration(10000));
@@ -48,10 +49,10 @@ public final class JavaRabbitMQDistributedConsumer implements Serializable {
                 params
         ));
 
-        Function<byte[], String> messageHandler = new Function<byte[], String>() {
+        Function<Delivery, String> messageHandler = new Function<Delivery, String>() {
 
-            public String call(byte[] message) {
-                return new String(message);
+            public String call(Delivery message) {
+                return new String(message.getBody());
             }
         };
 

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,13 +17,15 @@ package org.apache.spark.streaming.rabbitmq.distributed
 
 import akka.actor.ActorSystem
 import com.rabbitmq.client.ConsumerCancelledException
+import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.typesafe.config.ConfigFactory
+import org.apache.spark.internal.Logging
 import org.apache.spark.partial.{BoundedDouble, CountEvaluator, PartialResult}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.rabbitmq.consumer.Consumer
 import org.apache.spark.streaming.rabbitmq.consumer.Consumer._
-import org.apache.spark.util.{NextIterator, Utils}
-import org.apache.spark.{Accumulator, Logging, Partition, SparkContext, SparkException, TaskContext}
+import org.apache.spark.util.{LongAccumulator, NextIterator, Utils}
+import org.apache.spark.{Partition, SparkContext, SparkException, TaskContext}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
@@ -35,8 +37,8 @@ class RabbitMQRDD[R: ClassTag](
                                 @transient sc: SparkContext,
                                 distributedKeys: Seq[RabbitMQDistributedKey],
                                 rabbitMQParams: Map[String, String],
-                                val countAccumulator: Accumulator[Long],
-                                messageHandler: Array[Byte] => R
+                                val countAccumulator: LongAccumulator,
+                                messageHandler: Delivery => R
                               ) extends RDD[R](sc, Nil) with Logging {
 
   @volatile private var totalCalculated: Option[Long] = None
@@ -185,18 +187,10 @@ class RabbitMQRDD[R: ClassTag](
         if (finished || (maxMessagesPerPartition.isDefined && numMessages >= maxMessagesPerPartition.get)) {
           finishIterationAndReturn()
         } else {
-          Try {
-            val delivery = queueConsumer.nextDelivery()
-
-            (delivery, messageHandler(delivery.getBody))
-          } match {
-            case Success((delivery, data)) =>
-              //Send ack if not set the auto ack property
-              if (sendingBasicAckFromParams(rabbitParams))
-                consumer.sendBasicAck(delivery)
-              //Increment the number of messages consumed correctly
-              numMessages += 1
-              data
+          Try(queueConsumer.nextDelivery())
+          match {
+            case Success(delivery) =>
+              processDelivery(delivery)
             case Failure(e: ConsumerCancelledException) =>
               finishIterationAndReturn()
             case Failure(e) =>
@@ -204,16 +198,36 @@ class RabbitMQRDD[R: ClassTag](
                 finished = true
                 closeIfNeeded()
               }
-              throw new SparkException(s"Error receiving data from RabbitMQ with error: ${e.getLocalizedMessage}")
+              throw new SparkException(s"Error receiving data from RabbitMQ with error: ${e.getLocalizedMessage}", e)
           }
         }
+      }
+    }
+
+    private def processDelivery(delivery: Delivery): R = {
+      Try(messageHandler(delivery))
+      match {
+        case Success(data) =>
+          //Send ack if not set the auto ack property
+          if (sendingBasicAckFromParams(rabbitParams))
+            consumer.sendBasicAck(delivery)
+          //Increment the number of messages consumed correctly
+          numMessages += 1
+          data
+        case Failure(e) =>
+          //Send noack if not set the auto ack property
+          if (sendingBasicAckFromParams(rabbitParams)) {
+            log.warn(s"failed to process message. Sending noack ...", e)
+            consumer.sendBasicNAck(delivery)
+          }
+          null.asInstanceOf[R]
       }
     }
 
     override def close(): Unit = {
       //Increment the accumulator to control in the driver the number of messages consumed by all executors, this is
       // used to report in the Spark UI this number for the next iteration
-      countAccumulator += numMessages
+      countAccumulator.add(numMessages)
       log.info(s"******* Received $numMessages messages by Partition : ${part.index}  before close Channel ******")
       //Close the scheduler and the channel in the consumer
       scheduleProcess.cancel()
@@ -253,8 +267,8 @@ object RabbitMQRDD extends Logging {
   def apply[R: ClassTag](sc: SparkContext,
                          distributedKeys: Seq[RabbitMQDistributedKey],
                          rabbitMQParams: Map[String, String],
-                         countAccumulator: Accumulator[Long],
-                         messageHandler: Array[Byte] => R
+                         countAccumulator: LongAccumulator,
+                         messageHandler: Delivery => R
                         ): RabbitMQRDD[R] = {
 
     new RabbitMQRDD[R](sc, distributedKeys, rabbitMQParams, countAccumulator, messageHandler)
@@ -262,7 +276,7 @@ object RabbitMQRDD extends Logging {
 
   def getActorSystem: ActorSystem = {
     synchronized {
-      if (system.isEmpty || (system.isDefined && system.get.isTerminated))
+      if (system.isEmpty || (system.isDefined && system.get.whenTerminated.isCompleted))
         system = Option(akka.actor.ActorSystem(
           s"system-${System.currentTimeMillis()}",
           ConfigFactory.load(ConfigFactory.parseString("akka.daemonic=on"))
@@ -275,7 +289,8 @@ object RabbitMQRDD extends Logging {
     synchronized {
       system.foreach(actorSystem => {
         log.debug(s"Shutting down actor system: ${actorSystem.name}")
-        actorSystem.shutdown()
+        actorSystem.terminate()
+        system = None
       })
     }
   }

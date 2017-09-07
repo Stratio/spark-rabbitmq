@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +15,9 @@
  */
 package org.apache.spark.streaming.rabbitmq.receiver
 
+import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.rabbitmq.client._
-import org.apache.spark.Logging
+import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
@@ -32,7 +33,7 @@ private[rabbitmq]
 class RabbitMQInputDStream[R: ClassTag](
                                          @transient ssc_ : StreamingContext,
                                          params: Map[String, String],
-                                         messageHandler: Array[Byte] => R
+                                         messageHandler: Delivery => R
                                        ) extends ReceiverInputDStream[R](ssc_) with Logging {
 
   private val storageLevelParam =
@@ -48,7 +49,7 @@ private[rabbitmq]
 class RabbitMQReceiver[R: ClassTag](
                                      params: Map[String, String],
                                      storageLevel: StorageLevel,
-                                     messageHandler: Array[Byte] => R
+                                     messageHandler: Delivery => R
                                    )
   extends Receiver[R](storageLevel) with Logging {
 
@@ -87,16 +88,19 @@ class RabbitMQReceiver[R: ClassTag](
     try {
       log.info("RabbitMQ consumer start consuming data")
       while (!isStopped() && consumer.channel.isOpen) {
-        val delivery = queueConsumer.nextDelivery()
-
-        store(messageHandler(delivery.getBody))
-
-        if (sendingBasicAckFromParams(params))
-          consumer.sendBasicAck(delivery)
+        Try(queueConsumer.nextDelivery())
+        match {
+          case Success(delivery) =>
+            processDelivery(consumer, delivery)
+          case Failure(e) =>
+            throw new Exception(s"An error happen while getting next delivery: ${e.getLocalizedMessage}", e)
+        }
       }
     } catch {
       case unknown: Throwable =>
         log.error("Got this unknown exception: " + unknown, unknown)
+      case exception: Exception =>
+        log.error("Got this Exception: " + exception, exception)
     }
     finally {
       log.info("it has been stopped")
@@ -104,9 +108,25 @@ class RabbitMQReceiver[R: ClassTag](
         consumer.close()
       } catch {
         case e: Throwable =>
-          log.error(s"error on close consumer, ignoring it : ${e.getLocalizedMessage}")
+          log.error(s"error on close consumer, ignoring it : ${e.getLocalizedMessage}", e)
       }
       restart("Trying to connect again")
+    }
+  }
+
+  private def processDelivery(consumer: Consumer, delivery:Delivery) {
+    Try(store(messageHandler(delivery)))
+    match {
+      case Success(data) =>
+        //Send ack if not set the auto ack property
+        if (sendingBasicAckFromParams(params))
+          consumer.sendBasicAck(delivery)
+      case Failure(e) =>
+        //Send noack if not set the auto ack property
+        if (sendingBasicAckFromParams(params)) {
+          log.warn(s"failed to process message. Sending noack ...", e)
+          consumer.sendBasicNAck(delivery)
+        }
     }
   }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +19,10 @@ import java.util.concurrent.ConcurrentHashMap
 
 import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.rabbitmq.client.{Connection, ConnectionFactory, _}
+import org.apache.spark.SparkException
+import org.apache.spark.internal.Logging
 import org.apache.spark.streaming.rabbitmq.ConfigParameters._
 import org.apache.spark.streaming.rabbitmq.models.{ExchangeAndRouting, QueueConnectionOpts}
-import org.apache.spark.{Logging, SparkException}
 
 import scala.collection.JavaConversions._
 import scala.util.{Failure, Success, Try}
@@ -61,6 +62,13 @@ class Consumer(val channel: Channel, params: Map[String, String]) extends Loggin
    */
   def sendBasicAck(delivery: Delivery): Unit =
     channel.basicAck(delivery.getEnvelope.getDeliveryTag,false)
+
+  /**
+   * Send one basic noack, this ack correspond with the delivery param
+   * @param delivery The previous delivery that the queueConsumer send with one message consumed
+   */
+  def sendBasicNAck(delivery: Delivery): Unit =
+    channel.basicNack(delivery.getEnvelope.getDeliveryTag,false,true)
 
   /**
    * Set the number of messages to one when the FairDispatch is called, this is necessary when we want more than one
@@ -209,8 +217,12 @@ object Consumer extends Logging with ConsumerParamsUtils {
    */
   def closeConnections(): Unit =
     connections.foreach{case (key, connection) =>
-      connection.close()
-      connections.remove(key)
+      try {
+        if (connection.isOpen)
+          connection.close(DefaultCodeClose.toInt, s"Closing connection with key: $key")
+      } finally {
+        connections.remove(key)
+      }
     }
 
   private def setVirtualHost(params: Map[String, String]): Unit = {
@@ -239,16 +251,37 @@ object Consumer extends Logging with ConsumerParamsUtils {
   private def getChannel(params: Map[String, String]): Try[Channel] = {
     val addresses = getAddresses(params)
     val addressesKey = addresses.mkString(",")
-    val connection = connections.getOrElse(addressesKey, addConnection(addressesKey, addresses))
+    val connection = {
+      if(connections.contains(addressesKey))
+        connections(addressesKey)
+      else addConnection(addressesKey, addresses)
+    }
 
     log.debug("Creating new channel")
 
-    Try(connection.createChannel)
+    val channel = Try(connection.createChannel)
+    channel match {
+      case Failure(e) =>
+        try {
+          if (connection.isOpen) {
+            connection.close(
+              params.getOrElse(CodeClose, DefaultCodeClose).toInt,
+              "Closing connection as we can't create a channel with it ..."
+            )
+          }
+        } finally {
+          log.warn(s"Failed to createChannel ${e.getMessage}. Remove connection $addressesKey")
+          connections.remove(addressesKey)
+        }
+      case _ =>
+        log.debug("Channel created correctly")
+    }
+    channel
   }
 
   private def addConnection(key: String, addresses: Array[Address]) : Connection = {
     val conn = factory.newConnection(addresses)
-    connections.putIfAbsent(key, conn)
+    connections.put(key, conn)
     conn
   }
 }

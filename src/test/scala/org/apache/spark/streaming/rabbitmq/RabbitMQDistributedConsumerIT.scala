@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +17,7 @@ package org.apache.spark.streaming.rabbitmq
 
 import java.util.UUID
 
+import com.rabbitmq.client.QueueingConsumer.Delivery
 import org.apache.spark.streaming.rabbitmq.distributed.RabbitMQDistributedKey
 import org.apache.spark.streaming.rabbitmq.models.ExchangeAndRouting
 import org.junit.runner.RunWith
@@ -59,9 +60,29 @@ class RabbitMQDistributedConsumerIT extends TemporalDataSuite {
           rabbitMQConnection
         )
       )
-      val distributedStream = RabbitMQUtils.createDistributedStream[String](ssc, distributedKey, rabbitMQParams)
 
-      val totalEvents = ssc.sparkContext.accumulator(0L, "Number of events received")
+      //Delivery is not Serializable by Spark, is possible use Map, Seq or native Classes
+      import scala.collection.JavaConverters._
+      val distributedStream = RabbitMQUtils.createDistributedStream[Map[String, Any]](
+        ssc,
+        distributedKey,
+        rabbitMQParams,
+        (rawMessage: Delivery) =>
+          Map(
+            "body" -> new Predef.String(rawMessage.getBody),
+            "exchange" -> rawMessage.getEnvelope.getExchange,
+            "routingKey" -> rawMessage.getEnvelope.getRoutingKey,
+            "deliveryTag" -> rawMessage.getEnvelope.getDeliveryTag
+          ) ++ {
+            //Avoid null pointer Exception
+            Option(rawMessage.getProperties.getHeaders) match {
+              case Some(headers) => Map("headers" -> headers.asScala)
+              case None => Map.empty[String, Any]
+            }
+          }
+      )
+
+      val totalEvents = ssc.sparkContext.longAccumulator("Number of events received")
 
       // Start up the receiver.
       distributedStream.start()
@@ -72,8 +93,8 @@ class RabbitMQDistributedConsumerIT extends TemporalDataSuite {
           val count = rdd.count()
           // Do something with this message
           println(s"EVENTS COUNT : \t $count")
-          totalEvents += count
-          //rdd.collect().sortBy(event => event.toInt).foreach(event => print(s"$event, "))
+          totalEvents.add(count)
+          //rdd.collect().foreach(event => print(s"${event.toString}, "))
         } else println("RDD is empty")
         println(s"TOTAL EVENTS : \t $totalEvents")
       })

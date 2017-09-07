@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,8 @@ object ConfigParameters {
   val VirtualHostKey = "virtualHost"
   val UserNameKey = "userName"
   val PasswordKey = "password"
-  val ConnectionKeys = List(HostsKey, VirtualHostKey, UserNameKey, PasswordKey)
+  val CodeClose = "codeClose"
+  val ConnectionKeys = List(HostsKey, VirtualHostKey, UserNameKey, PasswordKey, CodeClose)
 
   /**
    * Queue Connection properties
@@ -59,17 +60,18 @@ object ConfigParameters {
   val AutoAckType = "auto"
   val DefaultHost = "localhost"
   val DefaultPrefetchCount = 1
+  val DefaultCodeClose = "320"
 
   /**
    * Message Consumed properties
    */
-  private val XmaxLength = "x-max-length"
-  private val XmessageTtl = "x-message-ttl"
-  private val Xexpires = "x-expires"
-  private val XmaxLengthBytes = "x-max-length-bytes"
-  private val XDeadLetterExchange = "x-dead-letter-exchange"
-  private val XdeadLetterRoutingKey = "x-dead-letter-routing-key"
-  private val XmaxPriority = "x-max-priority"
+  val XmaxLength = "x-max-length"
+  val XmessageTtl = "x-message-ttl"
+  val Xexpires = "x-expires"
+  val XmaxLengthBytes = "x-max-length-bytes"
+  val XDeadLetterExchange = "x-dead-letter-exchange"
+  val XdeadLetterRoutingKey = "x-dead-letter-routing-key"
+  val XmaxPriority = "x-max-priority"
   val MessageConsumerPropertiesKeys =
     List(XmaxLength, XmessageTtl, Xexpires, XmaxLengthBytes, XDeadLetterExchange, XdeadLetterRoutingKey, XmaxPriority)
 

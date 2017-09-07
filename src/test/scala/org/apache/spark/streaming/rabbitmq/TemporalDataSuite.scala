@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -168,6 +168,6 @@ private[rabbitmq] trait TemporalDataSuite extends RabbitMQSuite with BeforeAndAf
   }
 
   override def afterAll : Unit = {
-    system.shutdown()
+    system.terminate()
   }
 }

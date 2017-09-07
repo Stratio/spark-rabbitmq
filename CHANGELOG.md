@@ -1,6 +1,25 @@
 # Changelog
 
-Only listing significant user-visible, not internal code cleanups and minor bug fixes. 
+## 0.6.0 (upcoming)
+
+* Pending changelog
+
+## 0.5.0 (December 15, 2016)
+
+* Upgrade to Spark 2.0
+* Optimized accumulators with AccumulatorV2 API
+* Removed crossbuild with Spark 1.6 and 1.5
+
+## 0.4.0 (December 15, 2016)
+
+* Upgrade scala version to 2.11.8
+* Upgrade to rabbitMQ library version 3.6.6
+* Removed Array[Byte] in createStream API
+* The library now run with Delivery message of RabbitMQ
+* Added tests with Delivery message option
+* Bugfix: Send noAck when store messages fails
+* Bugfix: Integer conversion in message parameters
+* Bugfix: Close connections correctly
 
 ## 0.3.0 (June 2016)
 

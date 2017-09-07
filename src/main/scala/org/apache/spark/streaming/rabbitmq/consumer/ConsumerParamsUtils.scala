@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -132,9 +132,15 @@ trait ConsumerParamsUtils {
    * Consumer Messages
    */
   def getMessageConsumerParams(params: Map[String, String]): Map[String, AnyRef] = {
+    def paramValue(key: String, param: String): AnyRef = {
+      key match {
+        case XmaxLength | XmessageTtl | Xexpires | XmaxLengthBytes | XmaxPriority => param.toInt.asInstanceOf[AnyRef]
+        case _ => param
+      }
+    }
     for {
       key <- MessageConsumerPropertiesKeys
       param <- params.get(key)
-    } yield (key, param)
+    } yield (key, paramValue(key, param))
   }.toMap
 }

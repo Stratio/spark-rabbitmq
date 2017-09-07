@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Stratio (http://stratio.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,24 +15,13 @@
  */
 package org.apache.spark.streaming.rabbitmq
 
-import org.apache.spark.Logging
-import org.scalatest.concurrent.Timeouts
-import org.scalatest.{FunSuite, Outcome}
+import org.apache.spark.internal.Logging
+import org.scalatest.FunSuite
+import org.scalatest.concurrent.{TimeLimitedTests, Timeouts}
+import org.scalatest.time.SpanSugar._
 
-private[rabbitmq] trait RabbitMQSuite extends FunSuite with Timeouts with Logging {
+private[rabbitmq] trait RabbitMQSuite extends FunSuite with Timeouts with Logging with TimeLimitedTests {
 
-  /**
-   * Log the suite name and the test name before and after each test.
-   */
-  final protected override def withFixture(test: NoArgTest): Outcome = {
-    val testName = test.text
-    val suiteName = this.getClass.getName
-    val shortSuiteName = suiteName.replaceAll("org.apache.spark", "o.a.s")
-    try {
-      logInfo(s"\n\n===== TEST OUTPUT FOR $shortSuiteName: '$testName' =====\n")
-      test()
-    } finally {
-      logInfo(s"\n\n===== FINISHED $shortSuiteName: '$testName' =====\n")
-    }
-  }
+  val timeLimit = 1 minutes
+
 }
