@@ -89,11 +89,12 @@ can't select NONE, because on each Spark action the RDD will be re-computed
 
 - String
 ```
-val receiverStream = RabbitMQUtils.createDistributedStream[String](sparkStreamingContext, params, distributedKeys)
+val receiverStream = RabbitMQUtils.createDistributedStream[String](sparkStreamingContext, distributedKeys, params)
 ```
 - Generic user Type
 ```
-val receiverStream = RabbitMQUtils.createDistributedStream[R](sparkStreamingContext, params, distributedKeys, Array[Byte] => R))
+val receiverStream = RabbitMQUtils.createDistributedStream[R](sparkStreamingContext, params, distributedKeys,
+  delivery => { /* transform delivery.getBody byte array to object type R */} ))
 ```
 
 
