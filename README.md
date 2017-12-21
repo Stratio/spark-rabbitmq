@@ -111,7 +111,7 @@ JavaReceiverInputDStream receiverStream = RabbitMQUtils.createJavaDistributedStr
 |---------------------------|--------------------------------------|--------------------------------------|
 | maxMessagesPerPartition   | Maximum number of messages           | Yes                                  |
 | levelParallelism          | Num. of partitions by executor       | Yes  (default: 1)                    |
-| MaxReceiveTime            | Max time to receive messages         | Yes  (default: 0) (auto)             |
+| maxReceiveTime            | Max time to receive messages         | Yes  (default: 0) (auto)             |
 | rememberDuration          | Remember duration for Spark Dstreams | Yes  (default: 60s)                  |
 
 
