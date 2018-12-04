@@ -1,4 +1,4 @@
-name := "qstream"
+name := "spark-rabbitmq"
 
 version := "0.1"
 
