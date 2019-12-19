@@ -104,12 +104,6 @@ class RabbitMQReceiver[R: ClassTag](
     }
     finally {
       log.info("it has been stopped")
-      try {
-        consumer.close()
-      } catch {
-        case e: Throwable =>
-          log.error(s"error on close consumer, ignoring it : ${e.getLocalizedMessage}", e)
-      }
       restart("Trying to connect again")
     }
   }
