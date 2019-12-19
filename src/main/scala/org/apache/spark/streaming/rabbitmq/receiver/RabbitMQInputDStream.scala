@@ -103,7 +103,6 @@ class RabbitMQReceiver[R: ClassTag](
         log.error("Got this Exception: " + exception, exception)
     }
     finally {
-      log.info("it has been stopped")
       restart("Trying to connect again")
     }
   }
