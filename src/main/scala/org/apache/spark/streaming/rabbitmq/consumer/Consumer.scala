@@ -203,6 +203,7 @@ object Consumer extends Logging with ConsumerParamsUtils {
 
     setVirtualHost(params)
     setUserPassword(params)
+    setAutomaticRecoveryEnabled(params)
 
     getChannel(params) match {
       case Success(channel) =>
@@ -224,6 +225,18 @@ object Consumer extends Logging with ConsumerParamsUtils {
         connections.remove(key)
       }
     }
+
+  /**
+   * https://www.rabbitmq.com/api-guide.html#recovery
+   * @param params
+   */
+  private def setAutomaticRecoveryEnabled(params: Map[String,String]): Unit = {
+    val recoveryState = params.getOrElse(AutomaticRecovery, DefaultAutomaticRecovery.toString).toBoolean
+    factory.setAutomaticRecoveryEnabled(recoveryState)
+    val recoveryInterval = params.getOrElse(NetworkRecoveryInterval, DefaultNetworkRecoveryInterval.toString).toInt
+    factory.setNetworkRecoveryInterval(recoveryInterval)
+  }
+
 
   private def setVirtualHost(params: Map[String, String]): Unit = {
     val vHost = params.get(VirtualHostKey)

@@ -8,28 +8,10 @@ from [RabbitMQ](https://www.rabbitmq.com/).
 
 ## Requirements
 
-This library requires Spark 2.0+, Scala 2.11+, RabbitMQ 3.5+
+ This library was updated to work with Spark 2.3+ and sbt instead of maven.
 
 ## Using the library
-
-There are two ways of using RabbitMQ-Receiver library:
-
-The first one is to add the next dependency in your pom.xml:
-
-```
-<dependency>
-  <groupId>com.stratio.receiver</groupId>
-  <artifactId>spark-rabbitmq</artifactId>
-  <version>LATEST</version>
-</dependency>
-```
-
-The other one is to clone the full repository and build the project:
-
-```
-git clone https://github.com/Stratio/spark-rabbitmq.git
-mvn clean install
-```
+Create assembly with sbt and import into your project
 
 This library includes two implementations for consuming messages from RabbitMQ with Spark Streaming: 
   
@@ -42,8 +24,7 @@ This library includes two implementations for consuming messages from RabbitMQ w
 
 ### Build
 
-`mvn clean package`
-
+sbt assembly
 
 ### Distributed Approach
 

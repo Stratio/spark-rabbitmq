@@ -45,8 +45,10 @@ object ConfigParameters {
   val AckTypeKey = "ackType"
   val FairDispatchKey = "fairDispatch"
   val PrefetchCount = "prefetchCount"
+  val AutomaticRecovery = "automaticRecovery"
+  val NetworkRecoveryInterval = "networkRecoveryInterval"
   val QueueConnectionPropertiesKeys =
-    List(DurableKey, ExclusiveKey, AutoDeleteKey, AckTypeKey, FairDispatchKey, PrefetchCount)
+    List(DurableKey, ExclusiveKey, AutoDeleteKey, AckTypeKey, FairDispatchKey, PrefetchCount, AutomaticRecovery,NetworkRecoveryInterval)
 
   /**
    * Queue Connection Defaults
@@ -61,6 +63,8 @@ object ConfigParameters {
   val DefaultHost = "localhost"
   val DefaultPrefetchCount = 1
   val DefaultCodeClose = "320"
+  val DefaultAutomaticRecovery = true
+  val DefaultNetworkRecoveryInterval = 10000
 
   /**
    * Message Consumed properties

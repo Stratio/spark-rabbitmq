@@ -231,7 +231,7 @@ class RabbitMQRDD[R: ClassTag](
       log.info(s"******* Received $numMessages messages by Partition : ${part.index}  before close Channel ******")
       //Close the scheduler and the channel in the consumer
       scheduleProcess.cancel()
-      consumer.close()
+      //consumer.close()
     }
 
     private def finishIterationAndReturn(): R = {
