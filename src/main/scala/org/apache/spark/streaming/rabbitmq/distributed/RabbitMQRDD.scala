@@ -150,7 +150,7 @@ class RabbitMQRDD[R: ClassTag](
     import system.dispatcher
 
     //Listener for control the shutdown process when the tasks are interrupted
-    context.addTaskCompletionListener(context => {
+    context.addTaskCompletionListener[Unit](context => {
       if (context.isInterrupted()) {
         RabbitMQRDD.shutDownActorSystem()
         log.info(s"Task interrupted, closing RabbitMQ connections in partition: ${part.index}")
